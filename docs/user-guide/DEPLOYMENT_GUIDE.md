@@ -538,9 +538,9 @@ Berikut adalah daftar lengkap environment variables yang digunakan aplikasi:
 | `LLM_MODEL_PRO` | No | `skylark-pro` | Model LLM untuk task kompleks (BANT scoring, pipeline evaluation) |
 | `LLM_MODEL_LITE` | No | `skylark-lite` | Model LLM untuk task ringan (NER extraction) |
 | `EMBEDDING_MODEL` | No | `skylark-embedding-vision` | Model embedding untuk pgvector (1024-dim) |
-| `DATABASE_URL` | Yes | `postgresql+asyncpg://rsa_admin:rsa_dev_password@localhost:5432/rsa_sales` | Connection string PostgreSQL (di-override oleh POSTGRES_* di compose) |
+| `DATABASE_URL` | Yes | `postgresql+asyncpg://rsa_admin:<your_password>@localhost:5432/rsa_sales` | Connection string PostgreSQL (di-override oleh POSTGRES_* di compose) |
 | `REDIS_URL` | No | `redis://localhost:6379/0` | Connection string Redis untuk Celery broker |
-| `JWT_SECRET` | Yes | `change_me_in_production` | Secret key untuk JWT signing. Minimal 32 karakter di production. |
+| `JWT_SECRET` | Yes | `<your_jwt_secret>` | Secret key untuk JWT signing. Minimal 32 karakter di production. |
 | `JWT_ALGORITHM` | No | `HS256` | Algoritma JWT signing |
 | `JWT_EXPIRE_MINUTES` | No | `1440` (24 jam) | Expiry JWT token dalam menit |
 | `DEBUG` | No | `true` | Mode debug. Set `false` di production. |

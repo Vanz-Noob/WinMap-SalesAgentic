@@ -895,7 +895,7 @@ services:
     container_name: rsa_postgres
     environment:
       POSTGRES_USER: rsa_admin
-      POSTGRES_PASSWORD: rsa_dev_password
+      POSTGRES_PASSWORD: <your_password>
       POSTGRES_DB: rsa_sales
     ports:
       - "5432:5432"
@@ -927,7 +927,7 @@ services:
     ports:
       - "8000:8000"
     environment:
-      - DATABASE_URL=postgresql+asyncpg://rsa_admin:rsa_dev_password@postgres:5432/rsa_sales
+      - DATABASE_URL=postgresql+asyncpg://rsa_admin:${POSTGRES_PASSWORD}@postgres:5432/rsa_sales
       - REDIS_URL=redis://redis:6379/0
       - ARK_API_KEY=${ARK_API_KEY}
       - ARK_BASE_URL=https://ark.ap-southeast.bytepluses.com/api/v3
@@ -947,7 +947,7 @@ services:
     build: ./backend
     container_name: rsa_celery
     environment:
-      - DATABASE_URL=postgresql+asyncpg://rsa_admin:rsa_dev_password@postgres:5432/rsa_sales
+      - DATABASE_URL=postgresql+asyncpg://rsa_admin:${POSTGRES_PASSWORD}@postgres:5432/rsa_sales
       - REDIS_URL=redis://redis:6379/0
       - ARK_API_KEY=${ARK_API_KEY}
       - ARK_BASE_URL=https://ark.ap-southeast.bytepluses.com/api/v3
@@ -1275,7 +1275,7 @@ from pydantic_settings import BaseSettings
 
 class Settings(BaseSettings):
     # Database
-    DATABASE_URL: str = "postgresql+asyncpg://rsa_admin:rsa_dev_password@localhost:5432/rsa_sales"
+    DATABASE_URL: str = ""  # Set via environment variable
 
     # Redis
     REDIS_URL: str = "redis://localhost:6379/0"
@@ -1288,7 +1288,7 @@ class Settings(BaseSettings):
     EMBEDDING_MODEL: str = "skylark-embedding-vision"
 
     # JWT
-    JWT_SECRET: str = "change_me_in_production"
+    JWT_SECRET: str = ""  # Set via environment variable
     JWT_ALGORITHM: str = "HS256"
     JWT_EXPIRE_MINUTES: int = 1440
 
@@ -2274,7 +2274,7 @@ export default function PipelinePage() {
    - Port: 5432
    - Database: rsa_sales
    - Username: rsa_admin
-   - Password: rsa_dev_password
+   - Password: <your_password>
 4. Klik "Sign In"
 5. Pilih tables: opportunities, stages, activities, mv_funnel_summary, mv_forecast_data
 ```

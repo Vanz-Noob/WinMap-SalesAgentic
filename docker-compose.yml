@@ -3,16 +3,16 @@ services:
     image: pgvector/pgvector:pg16
     container_name: rsa_postgres
     environment:
-      POSTGRES_USER: rsa_admin
-      POSTGRES_PASSWORD: rsa_dev_password
-      POSTGRES_DB: rsa_sales
+      POSTGRES_USER: ${POSTGRES_USER:-rsa_admin}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: ${POSTGRES_DB:-rsa_sales}
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./backend/app/db/init.sql:/docker-entrypoint-initdb.d/init.sql
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U rsa_admin -d rsa_sales"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-rsa_admin} -d ${POSTGRES_DB:-rsa_sales}"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -36,14 +36,14 @@ services:
     ports:
       - "8000:8000"
     environment:
-      - DATABASE_URL=postgresql+asyncpg://rsa_admin:rsa_dev_password@postgres:5432/rsa_sales
+      - DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER:-rsa_admin}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-rsa_sales}
       - REDIS_URL=redis://redis:6379/0
       - ARK_API_KEY=${ARK_API_KEY}
       - ARK_BASE_URL=https://ark.ap-southeast.bytepluses.com/api/v3
       - LLM_MODEL_PRO=deepseek-v4-flash-ga-260731
       - LLM_MODEL_LITE=deepseek-v4-flash-ga-260731
       - EMBEDDING_MODEL=skylark-embedding-vision-250615
-      - JWT_SECRET=${JWT_SECRET:-change_me_in_production}
+      - JWT_SECRET=${JWT_SECRET:?Set JWT_SECRET in .env}
       - DEBUG=${DEBUG:-false}
     depends_on:
       postgres:
@@ -58,7 +58,7 @@ services:
     build: ./backend
     container_name: rsa_celery
     environment:
-      - DATABASE_URL=postgresql+asyncpg://rsa_admin:rsa_dev_password@postgres:5432/rsa_sales
+      - DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER:-rsa_admin}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-rsa_sales}
       - REDIS_URL=redis://redis:6379/0
       - ARK_API_KEY=${ARK_API_KEY}
       - ARK_BASE_URL=https://ark.ap-southeast.bytepluses.com/api/v3
@@ -78,7 +78,7 @@ services:
     build: ./backend
     container_name: rsa_celery_beat
     environment:
-      - DATABASE_URL=postgresql+asyncpg://rsa_admin:rsa_dev_password@postgres:5432/rsa_sales
+      - DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER:-rsa_admin}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-rsa_sales}
       - REDIS_URL=redis://redis:6379/0
       - ARK_API_KEY=${ARK_API_KEY}
       - ARK_BASE_URL=https://ark.ap-southeast.bytepluses.com/api/v3

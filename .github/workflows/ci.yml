@@ -16,9 +16,9 @@ jobs:
       postgres:
         image: pgvector/pgvector:pg16
         env:
-          POSTGRES_USER: rsa_admin
-          POSTGRES_PASSWORD: rsa_dev_password
-          POSTGRES_DB: rsa_sales
+          POSTGRES_USER: ${{ vars.CI_POSTGRES_USER }}
+          POSTGRES_PASSWORD: ${{ secrets.CI_POSTGRES_PASSWORD }}
+          POSTGRES_DB: ${{ vars.CI_POSTGRES_DB }}
         ports:
           - 5432:5432
         options: >-
@@ -51,7 +51,7 @@ jobs:
 
       - name: Run import check
         env:
-          DATABASE_URL: postgresql+asyncpg://rsa_admin:rsa_dev_password@localhost:5432/rsa_sales
+          DATABASE_URL: postgresql+asyncpg://${{ vars.CI_POSTGRES_USER }}:${{ secrets.CI_POSTGRES_PASSWORD }}@localhost:5432/${{ vars.CI_POSTGRES_DB }}
           REDIS_URL: redis://localhost:6379/0
           ARK_API_KEY: dummy_key_for_ci
           DEBUG: "false"

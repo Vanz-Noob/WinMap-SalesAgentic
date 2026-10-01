@@ -4,7 +4,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
     # Database
-    DATABASE_URL: str = "postgresql+asyncpg://rsa_admin:rsa_dev_password@localhost:5432/rsa_sales"
+    DATABASE_URL: str = ""  # Set via DATABASE_URL in .env or docker-compose
 
     # Redis
     REDIS_URL: str = "redis://localhost:6379/0"
@@ -17,7 +17,7 @@ class Settings(BaseSettings):
     EMBEDDING_MODEL: str = "skylark-embedding-vision-250615"
 
     # JWT
-    JWT_SECRET: str = "change_me_in_production"
+    JWT_SECRET: str = ""  # Set via JWT_SECRET in .env or docker-compose
     JWT_ALGORITHM: str = "HS256"
     JWT_EXPIRE_MINUTES: int = 1440
 

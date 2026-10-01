@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # ============================================
-# RenRND Sales Agentic AI — Stop Script
+# WinMap — Sales Intelligence Platform
+# Stop Script (Ubuntu / Linux compatible)
 # ============================================
 # Usage:
 #   ./stop.sh              # Stop production (default)
@@ -32,6 +33,34 @@ MODE="prod"
 DO_CLEAN=false
 STOP_ALL=false
 
+# ── Detect Docker Compose (V2 plugin or V1 standalone) ──
+detect_compose() {
+    if docker compose version &>/dev/null; then
+        COMPOSE_CMD=(docker compose)
+    elif command -v docker-compose &>/dev/null; then
+        COMPOSE_CMD=(docker-compose)
+    else
+        echo -e "${RED}Error: Docker Compose tidak ditemukan.${NC}"
+        echo -e "Install dengan: ${CYAN}sudo apt install docker-compose-plugin${NC} (V2)"
+        echo -e "Atau:           ${CYAN}sudo apt install docker-compose${NC} (V1)"
+        exit 1
+    fi
+}
+
+# ── Detect if Docker needs sudo ──
+detect_docker_sudo() {
+    if docker info &>/dev/null 2>&1; then
+        DOCKER_PREFIX=()
+    elif sudo docker info &>/dev/null 2>&1; then
+        DOCKER_PREFIX=(sudo)
+        COMPOSE_CMD=("${DOCKER_PREFIX[@]}" "${COMPOSE_CMD[@]}")
+    else
+        echo -e "${RED}Error: Tidak bisa akses Docker daemon.${NC}"
+        echo -e "Start Docker: ${CYAN}sudo systemctl start docker${NC}"
+        exit 1
+    fi
+}
+
 # ── Parse Arguments ─────────────────────────
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -53,7 +82,7 @@ while [[ $# -gt 0 ]]; do
             ;;
         --help|-h)
             echo ""
-            echo -e "${BOLD}RenRND Sales Agentic AI — Stop Script${NC}"
+            echo -e "${BOLD}WinMap — Sales Intelligence Platform${NC}"
             echo ""
             echo -e "${BOLD}Usage:${NC}"
             echo -e "  ./stop.sh [OPTIONS]"
@@ -63,7 +92,7 @@ while [[ $# -gt 0 ]]; do
             echo -e "  ${CYAN}--prod${NC}      Stop mode production (default)"
             echo -e "  ${CYAN}--clean${NC}     Stop + hapus semua volumes & data ${RED}(DANGER!)${NC}"
             echo -e "  ${CYAN}--all${NC}       Stop dev + prod sekaligus"
-            echo -e "  ${CYAN}--help${NC}     Show help ini"
+            echo -e "  ${CYAN}--help${NC}      Show help ini"
             echo ""
             echo -e "${BOLD}Examples:${NC}"
             echo -e "  ${GREEN}./stop.sh${NC}                  # Stop production"
@@ -74,7 +103,7 @@ while [[ $# -gt 0 ]]; do
             exit 0
             ;;
         *)
-            echo -e "${RED}❌ Unknown option: $1${NC}"
+            echo -e "${RED}Error: Unknown option: $1${NC}"
             echo -e "Run ${CYAN}./stop.sh --help${NC} untuk melihat opsi yang tersedia."
             exit 1
             ;;
@@ -89,57 +118,66 @@ stop_stack() {
 
     local file_path="$SCRIPT_DIR/$compose_file"
 
-    echo -e "${BLUE}🛑 Stopping RenRND Sales Agentic AI — ${mode_label}${NC}"
+    echo -e "${BLUE}Stopping WinMap — ${mode_label}${NC}"
     echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     echo ""
 
     # ── Check Docker ───────────────────────────
     echo -e "${CYAN}[1/4]${NC} Checking Docker..."
-    if ! command -v docker &> /dev/null; then
-        echo -e "${RED}❌ Docker tidak ditemukan.${NC}"
+    if ! command -v docker &>/dev/null; then
+        echo -e "${RED}Error: Docker tidak ditemukan.${NC}"
         return 1
     fi
 
-    if ! docker info &> /dev/null; then
-        echo -e "${YELLOW}⚠️  Docker daemon tidak berjalan. Services mungkin sudah berhenti.${NC}"
-        echo -e "${GREEN}✅ Nothing to stop${NC}"
+    detect_compose
+    detect_docker_sudo
+
+    if ! docker info &>/dev/null 2>&1; then
+        echo -e "${YELLOW}Warning: Docker daemon tidak berjalan. Services mungkin sudah berhenti.${NC}"
+        echo -e "${GREEN}OK Nothing to stop${NC}"
         return 0
     fi
-    echo -e "${GREEN}✅ Docker is running${NC}"
+    echo -e "${GREEN}OK Docker is running${NC}"
 
     # ── Check if services are running ─────────
     echo -e "${CYAN}[2/4]${NC} Checking running services..."
 
     # Count running containers from this compose file
-    RUNNING=$(docker compose -f "$file_path" ps --format json 2>/dev/null | grep -c '"State":"running"' || echo "0")
+    # Use || true to prevent set -e from exiting on grep returning 1 (no matches)
+    local running_containers
+    running_containers=$("${COMPOSE_CMD[@]}" -f "$file_path" ps --format json 2>/dev/null | grep '"State":"running"' || true)
 
-    if [[ "$RUNNING" == "0" ]] || [[ -z "$RUNNING" ]]; then
-        echo -e "${YELLOW}⚠️  Tidak ada services yang running untuk $compose_file${NC}"
-        echo -e "${GREEN}✅ Already stopped${NC}"
+    if [[ -z "$running_containers" ]]; then
+        echo -e "${YELLOW}Warning: Tidak ada services yang running untuk $compose_file${NC}"
+        echo -e "${GREEN}OK Already stopped${NC}"
         echo ""
         return 0
     fi
 
-    echo -e "   Found ${BOLD}${RUNNING}${NC} running service(s):"
-    docker compose -f "$file_path" ps --format "table {{.Service}}\t{{.Status}}" 2>/dev/null | sed 's/^/   /'
+    local running_count
+    running_count=$(echo "$running_containers" | grep -c '"State":"running"' || echo "0")
+
+    echo -e "   Found ${BOLD}${running_count}${NC} running service(s):"
+    "${COMPOSE_CMD[@]}" -f "$file_path" ps --format "table {{.Service}}\t{{.Status}}" 2>/dev/null | sed 's/^/   /' || \
+        docker ps --filter "name=rsa" --format "table {{.Names}}\t{{.Status}}" 2>/dev/null | sed 's/^/   /'
     echo ""
-    echo -e "${GREEN}✅ Services found${NC}"
+    echo -e "${GREEN}OK Services found${NC}"
 
     # ── Confirm clean ──────────────────────────
     if [[ "$do_clean" == true ]]; then
         echo ""
-        echo -e "${RED}${BOLD}⚠️  WARNING: --clean akan MENGHAPUS SEMUA DATA!${NC}"
-        echo -e "${RED}   • Database (postgres volume)${NC}"
-        echo -e "${RED}   • Redis cache${NC}"
-        echo -e "${RED}   • Data tidak bisa dikembalikan!${NC}"
+        echo -e "${RED}${BOLD}WARNING: --clean akan MENGHAPUS SEMUA DATA!${NC}"
+        echo -e "${RED}   - Database (postgres volume)${NC}"
+        echo -e "${RED}   - Redis cache${NC}"
+        echo -e "${RED}   - Data tidak bisa dikembalikan!${NC}"
         echo ""
         read -p "   Ketik 'DELETE' untuk konfirmasi: " confirm
         echo ""
 
         if [[ "$confirm" != "DELETE" ]]; then
-            echo -e "${YELLOW}⚠️  Dibatalkan. Data aman.${NC}"
-            echo -e "${GREEN}✅ Stop tanpa clean${NC}"
-            DO_CLEAN=false
+            echo -e "${YELLOW}Warning: Dibatalkan. Data aman.${NC}"
+            echo -e "${GREEN}OK Stop tanpa clean${NC}"
+            do_clean=false
         else
             echo -e "${RED}Proceeding with clean...${NC}"
         fi
@@ -149,40 +187,43 @@ stop_stack() {
     echo -e "${CYAN}[3/4]${NC} Stopping services..."
 
     if [[ "$do_clean" == true ]]; then
-        docker compose -f "$file_path" down -v --remove-orphans 2>&1 | while read -r line; do
+        "${COMPOSE_CMD[@]}" -f "$file_path" down -v --remove-orphans 2>&1 | while read -r line; do
             echo "   $line"
         done
-        echo -e "${GREEN}✅ Services stopped + volumes removed${NC}"
+        echo -e "${GREEN}OK Services stopped + volumes removed${NC}"
     else
-        docker compose -f "$file_path" down --remove-orphans 2>&1 | while read -r line; do
+        "${COMPOSE_CMD[@]}" -f "$file_path" down --remove-orphans 2>&1 | while read -r line; do
             echo "   $line"
         done
-        echo -e "${GREEN}✅ Services stopped${NC}"
+        echo -e "${GREEN}OK Services stopped${NC}"
     fi
 
     # ── Verify ─────────────────────────────────
     echo -e "${CYAN}[4/4]${NC} Verifying..."
 
-    REMAINING=$(docker compose -f "$file_path" ps --format json 2>/dev/null | grep -c '"State":"running"' || echo "0")
+    local remaining
+    remaining=$("${COMPOSE_CMD[@]}" -f "$file_path" ps --format json 2>/dev/null | grep '"State":"running"' || true)
 
-    if [[ "$REMAINING" == "0" ]] || [[ -z "$REMAINING" ]]; then
-        echo -e "${GREEN}✅ All services stopped${NC}"
+    if [[ -z "$remaining" ]]; then
+        echo -e "${GREEN}OK All services stopped${NC}"
     else
-        echo -e "${YELLOW}⚠️  $REMAINING service(s) masih running. Coba: docker kill${NC}"
+        local remaining_count
+        remaining_count=$(echo "$remaining" | grep -c '"State":"running"' || echo "0")
+        echo -e "${YELLOW}Warning: ${remaining_count} service(s) masih running. Coba: docker kill${NC}"
     fi
 
     echo ""
     echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-    echo -e "${GREEN}${BOLD}✅ $mode_label stopped successfully${NC}"
+    echo -e "${GREEN}${BOLD}OK ${mode_label} stopped successfully${NC}"
     echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     echo ""
 
     if [[ "$do_clean" == true ]]; then
-        echo -e "${YELLOW}💡 Untuk restart: ${CYAN}./start.sh${NC}"
-        echo -e "${YELLOW}💡 Jangan lupa seed ulang: ${CYAN}./start.sh --seed${NC}"
+        echo -e "${YELLOW}Tip: Untuk restart: ${CYAN}./start.sh${NC}"
+        echo -e "${YELLOW}Tip: Jangan lupa seed ulang: ${CYAN}./start.sh --seed${NC}"
         echo ""
     else
-        echo -e "${YELLOW}💡 Untuk restart: ${CYAN}./start.sh${NC}"
+        echo -e "${YELLOW}Tip: Untuk restart: ${CYAN}./start.sh${NC}"
         echo ""
     fi
 }

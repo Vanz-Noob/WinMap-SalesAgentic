@@ -7,7 +7,7 @@ services:
     container_name: rsa_prod_postgres
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-rsa_admin}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-rsa_prod_secure_pass_2026}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env.production}
       POSTGRES_DB: ${POSTGRES_DB:-rsa_sales}
     ports:
       - "5432:5432"
@@ -48,7 +48,7 @@ services:
       - LLM_MODEL_PRO=deepseek-v4-flash-ga-260731
       - LLM_MODEL_LITE=deepseek-v4-flash-ga-260731
       - EMBEDDING_MODEL=skylark-embedding-vision-250615
-      - JWT_SECRET=${JWT_SECRET:-change_me_in_production}
+      - JWT_SECRET=${JWT_SECRET:?Set JWT_SECRET in .env.production}
       - DEBUG=false
     depends_on:
       postgres:

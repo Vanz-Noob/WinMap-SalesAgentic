@@ -610,7 +610,7 @@ await apiDelete(`/opportunities/${id}`);
    - Port: `5432`
    - Database: `rsa_sales`
    - Username: `rsa_admin`
-   - Password: `rsa_dev_password`
+   - Password: `<your_postgres_password>`
 4. Pilih tables: `opportunities`, `stages`, `mv_funnel_summary`, `mv_forecast_data`, `mv_rep_performance`
 
 ### Buat Workbook
@@ -772,9 +772,9 @@ Fitur Nginx:
 | `LLM_MODEL_PRO` | `skylark-pro` | Model untuk reasoning kompleks |
 | `LLM_MODEL_LITE` | `skylark-lite` | Model untuk task sederhana |
 | `EMBEDDING_MODEL` | `skylark-embedding-vision` | Model untuk embedding |
-| `DATABASE_URL` | `postgresql+asyncpg://rsa_admin:rsa_dev_password@localhost:5432/rsa_sales` | Database URL |
+| `DATABASE_URL` | `postgresql+asyncpg://rsa_admin:<your_password>@localhost:5432/rsa_sales` | Database URL |
 | `REDIS_URL` | `redis://localhost:6379/0` | Redis URL |
-| `JWT_SECRET` | `change_me_in_production` | JWT secret key |
+| `JWT_SECRET` | `<your_jwt_secret>` | JWT secret key |
 | `DEBUG` | `false` | Debug mode (echo SQL queries) |
 | `POSTGRES_PASSWORD` | (required prod) | Password database production |
 | `NEXT_PUBLIC_API_URL` | `http://localhost:8000` | URL backend untuk frontend |
