@@ -32,6 +32,8 @@ PROD_COMPOSE="docker-compose.prod.yml"
 MODE="prod"
 DO_CLEAN=false
 STOP_ALL=false
+COMPOSE_CMD=()
+DOCKER_PREFIX=()
 
 # ── Detect Docker Compose (V2 plugin or V1 standalone) ──
 detect_compose() {
@@ -53,11 +55,19 @@ detect_docker_sudo() {
         DOCKER_PREFIX=()
     elif sudo docker info &>/dev/null 2>&1; then
         DOCKER_PREFIX=(sudo)
-        COMPOSE_CMD=("${DOCKER_PREFIX[@]}" "${COMPOSE_CMD[@]}")
     else
         echo -e "${RED}Error: Tidak bisa akses Docker daemon.${NC}"
         echo -e "Start Docker: ${CYAN}sudo systemctl start docker${NC}"
         exit 1
+    fi
+}
+
+# ── Build full compose command with sudo prefix ──
+get_compose_base() {
+    if [[ ${#DOCKER_PREFIX[@]} -gt 0 ]]; then
+        echo "${DOCKER_PREFIX[@]}" "${COMPOSE_CMD[@]}"
+    else
+        echo "${COMPOSE_CMD[@]}"
     fi
 }
 
@@ -115,8 +125,10 @@ stop_stack() {
     local compose_file="$1"
     local mode_label="$2"
     local do_clean="$3"
+    local env_file="$4"
 
     local file_path="$SCRIPT_DIR/$compose_file"
+    local env_path="$SCRIPT_DIR/$env_file"
 
     echo -e "${BLUE}Stopping WinMap — ${mode_label}${NC}"
     echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
@@ -132,34 +144,73 @@ stop_stack() {
     detect_compose
     detect_docker_sudo
 
-    if ! docker info &>/dev/null 2>&1; then
+    # Check if Docker daemon is running
+    local docker_ok=false
+    if [[ ${#DOCKER_PREFIX[@]} -gt 0 ]]; then
+        if sudo docker info &>/dev/null 2>&1; then
+            docker_ok=true
+        fi
+    else
+        if docker info &>/dev/null 2>&1; then
+            docker_ok=true
+        fi
+    fi
+
+    if [[ "$docker_ok" != true ]]; then
         echo -e "${YELLOW}Warning: Docker daemon tidak berjalan. Services mungkin sudah berhenti.${NC}"
         echo -e "${GREEN}OK Nothing to stop${NC}"
+        echo ""
         return 0
     fi
     echo -e "${GREEN}OK Docker is running${NC}"
 
+    # Build compose base command
+    local compose_base
+    if [[ ${#DOCKER_PREFIX[@]} -gt 0 ]]; then
+        compose_base=("${DOCKER_PREFIX[@]}" "${COMPOSE_CMD[@]}")
+    else
+        compose_base=("${COMPOSE_CMD[@]}")
+    fi
+
     # ── Check if services are running ─────────
     echo -e "${CYAN}[2/4]${NC} Checking running services..."
 
-    # Count running containers from this compose file
-    # Use || true to prevent set -e from exiting on grep returning 1 (no matches)
-    local running_containers
-    running_containers=$("${COMPOSE_CMD[@]}" -f "$file_path" ps --format json 2>/dev/null | grep '"State":"running"' || true)
-
-    if [[ -z "$running_containers" ]]; then
-        echo -e "${YELLOW}Warning: Tidak ada services yang running untuk $compose_file${NC}"
-        echo -e "${GREEN}OK Already stopped${NC}"
-        echo ""
-        return 0
+    # Try with --env-file first (for variable interpolation)
+    local running_containers=""
+    if [[ -f "$env_path" ]]; then
+        running_containers=$("${compose_base[@]}" --env-file "$env_path" -f "$file_path" ps --format json 2>/dev/null | grep '"State":"running"' || true)
+    else
+        # No env file — try without it (some compose files don't need it)
+        running_containers=$("${compose_base[@]}" -f "$file_path" ps --format json 2>/dev/null | grep '"State":"running"' || true)
     fi
 
-    local running_count
-    running_count=$(echo "$running_containers" | grep -c '"State":"running"' || echo "0")
+    # Fallback: check via docker ps directly
+    if [[ -z "$running_containers" ]]; then
+        local direct_running
+        if [[ ${#DOCKER_PREFIX[@]} -gt 0 ]]; then
+            direct_running=$(sudo docker ps --filter "name=rsa" --format '{{.Names}}' 2>/dev/null || true)
+        else
+            direct_running=$(docker ps --filter "name=rsa" --format '{{.Names}}' 2>/dev/null || true)
+        fi
 
-    echo -e "   Found ${BOLD}${running_count}${NC} running service(s):"
-    "${COMPOSE_CMD[@]}" -f "$file_path" ps --format "table {{.Service}}\t{{.Status}}" 2>/dev/null | sed 's/^/   /' || \
-        docker ps --filter "name=rsa" --format "table {{.Names}}\t{{.Status}}" 2>/dev/null | sed 's/^/   /'
+        if [[ -z "$direct_running" ]]; then
+            echo -e "${YELLOW}Warning: Tidak ada services WinMap yang running.${NC}"
+            echo -e "${GREEN}OK Already stopped${NC}"
+            echo ""
+            return 0
+        fi
+    fi
+
+    echo -e "   Found running services:"
+    if [[ -f "$env_path" ]]; then
+        "${compose_base[@]}" --env-file "$env_path" -f "$file_path" ps --format "table {{.Service}}\t{{.Status}}" 2>/dev/null | sed 's/^/   /' || \
+            { [[ ${#DOCKER_PREFIX[@]} -gt 0 ]] && sudo docker ps --filter "name=rsa" --format "table {{.Names}}\t{{.Status}}" 2>/dev/null | sed 's/^/   /'; } || \
+            docker ps --filter "name=rsa" --format "table {{.Names}}\t{{.Status}}" 2>/dev/null | sed 's/^/   /'
+    else
+        "${compose_base[@]}" -f "$file_path" ps --format "table {{.Service}}\t{{.Status}}" 2>/dev/null | sed 's/^/   /' || \
+            { [[ ${#DOCKER_PREFIX[@]} -gt 0 ]] && sudo docker ps --filter "name=rsa" --format "table {{.Names}}\t{{.Status}}" 2>/dev/null | sed 's/^/   /'; } || \
+            docker ps --filter "name=rsa" --format "table {{.Names}}\t{{.Status}}" 2>/dev/null | sed 's/^/   /'
+    fi
     echo ""
     echo -e "${GREEN}OK Services found${NC}"
 
@@ -187,29 +238,44 @@ stop_stack() {
     echo -e "${CYAN}[3/4]${NC} Stopping services..."
 
     if [[ "$do_clean" == true ]]; then
-        "${COMPOSE_CMD[@]}" -f "$file_path" down -v --remove-orphans 2>&1 | while read -r line; do
-            echo "   $line"
-        done
+        if [[ -f "$env_path" ]]; then
+            "${compose_base[@]}" --env-file "$env_path" -f "$file_path" down -v --remove-orphans 2>&1 | while read -r line; do
+                echo "   $line"
+            done
+        else
+            "${compose_base[@]}" -f "$file_path" down -v --remove-orphans 2>&1 | while read -r line; do
+                echo "   $line"
+            done
+        fi
         echo -e "${GREEN}OK Services stopped + volumes removed${NC}"
     else
-        "${COMPOSE_CMD[@]}" -f "$file_path" down --remove-orphans 2>&1 | while read -r line; do
-            echo "   $line"
-        done
+        if [[ -f "$env_path" ]]; then
+            "${compose_base[@]}" --env-file "$env_path" -f "$file_path" down --remove-orphans 2>&1 | while read -r line; do
+                echo "   $line"
+            done
+        else
+            "${compose_base[@]}" -f "$file_path" down --remove-orphans 2>&1 | while read -r line; do
+                echo "   $line"
+            done
+        fi
         echo -e "${GREEN}OK Services stopped${NC}"
     fi
 
     # ── Verify ─────────────────────────────────
     echo -e "${CYAN}[4/4]${NC} Verifying..."
 
-    local remaining
-    remaining=$("${COMPOSE_CMD[@]}" -f "$file_path" ps --format json 2>/dev/null | grep '"State":"running"' || true)
+    local remaining=""
+    if [[ -f "$env_path" ]]; then
+        remaining=$("${compose_base[@]}" --env-file "$env_path" -f "$file_path" ps --format json 2>/dev/null | grep '"State":"running"' || true)
+    else
+        remaining=$("${compose_base[@]}" -f "$file_path" ps --format json 2>/dev/null | grep '"State":"running"' || true)
+    fi
 
     if [[ -z "$remaining" ]]; then
         echo -e "${GREEN}OK All services stopped${NC}"
     else
-        local remaining_count
-        remaining_count=$(echo "$remaining" | grep -c '"State":"running"' || echo "0")
-        echo -e "${YELLOW}Warning: ${remaining_count} service(s) masih running. Coba: docker kill${NC}"
+        echo -e "${YELLOW}Warning: beberapa service masih running.${NC}"
+        echo -e "   Coba manual: ${CYAN}docker kill \$(docker ps -q --filter name=rsa)${NC}"
     fi
 
     echo ""
@@ -231,13 +297,13 @@ stop_stack() {
 # ── Execute ─────────────────────────────────
 if [[ "$STOP_ALL" == true ]]; then
     # Stop both dev and prod
-    stop_stack "$PROD_COMPOSE" "PRODUCTION" "$DO_CLEAN"
+    stop_stack "$PROD_COMPOSE" "PRODUCTION" "$DO_CLEAN" ".env.production"
     echo ""
-    stop_stack "$DEV_COMPOSE" "DEVELOPMENT" "$DO_CLEAN"
+    stop_stack "$DEV_COMPOSE" "DEVELOPMENT" "$DO_CLEAN" ".env"
 else
     if [[ "$MODE" == "dev" ]]; then
-        stop_stack "$DEV_COMPOSE" "DEVELOPMENT" "$DO_CLEAN"
+        stop_stack "$DEV_COMPOSE" "DEVELOPMENT" "$DO_CLEAN" ".env"
     else
-        stop_stack "$PROD_COMPOSE" "PRODUCTION" "$DO_CLEAN"
+        stop_stack "$PROD_COMPOSE" "PRODUCTION" "$DO_CLEAN" ".env.production"
     fi
 fi
