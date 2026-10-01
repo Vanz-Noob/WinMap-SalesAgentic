@@ -1,0 +1,125 @@
+# Production Docker Compose Configuration
+# Usage: docker compose -f docker-compose.prod.yml up -d --build
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: rsa_prod_postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-rsa_admin}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-rsa_prod_secure_pass_2026}
+      POSTGRES_DB: ${POSTGRES_DB:-rsa_sales}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_prod_data:/var/lib/postgresql/data
+      - ./backend/app/db/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-rsa_admin} -d ${POSTGRES_DB:-rsa_sales}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    container_name: rsa_prod_redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_prod_data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  backend:
+    build: ./backend
+    container_name: rsa_prod_backend
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER:-rsa_admin}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-rsa_sales}
+      - REDIS_URL=redis://redis:6379/0
+      - ARK_API_KEY=${ARK_API_KEY}
+      - ARK_BASE_URL=https://ark.ap-southeast.bytepluses.com/api/v3
+      - LLM_MODEL_PRO=deepseek-v4-flash-ga-260731
+      - LLM_MODEL_LITE=deepseek-v4-flash-ga-260731
+      - EMBEDDING_MODEL=skylark-embedding-vision-250615
+      - JWT_SECRET=${JWT_SECRET:-change_me_in_production}
+      - DEBUG=false
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    command: gunicorn app.main:app -w 4 -k uvicorn.workers.UvicornWorker -b 0.0.0.0:8000
+
+  celery_worker:
+    build: ./backend
+    container_name: rsa_prod_celery_worker
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER:-rsa_admin}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-rsa_sales}
+      - REDIS_URL=redis://redis:6379/0
+      - ARK_API_KEY=${ARK_API_KEY}
+      - ARK_BASE_URL=https://ark.ap-southeast.bytepluses.com/api/v3
+      - LLM_MODEL_PRO=deepseek-v4-flash-ga-260731
+      - LLM_MODEL_LITE=deepseek-v4-flash-ga-260731
+      - EMBEDDING_MODEL=skylark-embedding-vision-250615
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+    command: celery -A app.celery_app worker --loglevel=warning --concurrency=2
+
+  celery_beat:
+    build: ./backend
+    container_name: rsa_prod_celery_beat
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER:-rsa_admin}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-rsa_sales}
+      - REDIS_URL=redis://redis:6379/0
+      - ARK_API_KEY=${ARK_API_KEY}
+      - ARK_BASE_URL=https://ark.ap-southeast.bytepluses.com/api/v3
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    command: celery -A app.celery_app beat --loglevel=warning
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: rsa_prod_frontend
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-http://localhost:8000}
+    depends_on:
+      backend:
+        condition: service_started
+    restart: unless-stopped
+
+  nginx:
+    image: nginx:alpine
+    container_name: rsa_prod_nginx
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+      - ./nginx/certs:/etc/nginx/certs
+    depends_on:
+      backend:
+        condition: service_started
+      frontend:
+        condition: service_started
+    restart: unless-stopped
+
+volumes:
+  postgres_prod_data:
+  redis_prod_data:
