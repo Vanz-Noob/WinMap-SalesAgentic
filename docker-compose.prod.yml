@@ -10,7 +10,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env.production}
       POSTGRES_DB: ${POSTGRES_DB:-rsa_sales}
     ports:
-      - "5432:5432"
+      - "5433:5432"
     volumes:
       - postgres_prod_data:/var/lib/postgresql/data
       - ./backend/app/db/init.sql:/docker-entrypoint-initdb.d/init.sql
@@ -25,7 +25,7 @@ services:
     image: redis:7-alpine
     container_name: rsa_prod_redis
     ports:
-      - "6379:6379"
+      - "6380:6379"
     volumes:
       - redis_prod_data:/data
     healthcheck:
@@ -109,7 +109,7 @@ services:
     image: nginx:alpine
     container_name: rsa_prod_nginx
     ports:
-      - "80:80"
+      - "8080:80"
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf
       - ./nginx/certs:/etc/nginx/certs
