@@ -9,8 +9,9 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-rsa_admin}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env.production}
       POSTGRES_DB: ${POSTGRES_DB:-rsa_sales}
-    ports:
-      - "5433:5432"
+    # No host port mapping — backend connects via Docker network (postgres:5432)
+    expose:
+      - "5432"
     volumes:
       - postgres_prod_data:/var/lib/postgresql/data
       - ./backend/app/db/init.sql:/docker-entrypoint-initdb.d/init.sql
@@ -24,8 +25,9 @@ services:
   redis:
     image: redis:7-alpine
     container_name: rsa_prod_redis
-    ports:
-      - "6380:6379"
+    # No host port mapping — backend connects via Docker network (redis:6379)
+    expose:
+      - "6379"
     volumes:
       - redis_prod_data:/data
     healthcheck:
