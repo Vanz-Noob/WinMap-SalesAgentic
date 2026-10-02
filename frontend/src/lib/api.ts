@@ -29,8 +29,14 @@ export async function apiFetch<T>(path: string, options?: RequestInit): Promise<
   }
 
   if (!res.ok) {
-    const error = await res.json().catch(() => res.text());
-    const message = typeof error === "object" && error?.detail ? error.detail : `API Error ${res.status}`;
+    const text = await res.text();
+    let message = `API Error ${res.status}`;
+    try {
+      const error = JSON.parse(text);
+      if (error?.detail) message = error.detail;
+    } catch {
+      if (text) message = text;
+    }
     throw new Error(message);
   }
   if (res.status === 204) return undefined as T;
