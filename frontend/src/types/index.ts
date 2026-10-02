@@ -89,6 +89,8 @@ export interface User {
   email: string;
   role: string;
   quota: number;
+  is_active?: boolean;
+  is_superuser?: boolean;
   created_at: string;
 }
 

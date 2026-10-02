@@ -33,9 +33,10 @@ async def health():
 
 
 # --- Register Routers ---
-from app.api.v1 import opportunities, stages, activities, tasks, accounts, dashboard, agents, presales_kpi, auth  # noqa: E402
+from app.api.v1 import opportunities, stages, activities, tasks, accounts, dashboard, agents, presales_kpi, auth, admin  # noqa: E402
 
 app.include_router(auth.router, prefix="/api/v1")
+app.include_router(admin.router, prefix="/api/v1")
 app.include_router(opportunities.router, prefix="/api/v1")
 app.include_router(stages.router, prefix="/api/v1")
 app.include_router(activities.router, prefix="/api/v1")

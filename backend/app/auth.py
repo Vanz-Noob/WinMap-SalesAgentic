@@ -1,6 +1,6 @@
-"""Authentication utilities: JWT token, password hashing, current user dependency."""
+"""Authentication utilities: JWT token, password hashing, current user dependency, RBAC."""
 from datetime import datetime, timedelta, timezone
-from typing import Annotated
+from typing import Annotated, Callable, Iterable
 
 import bcrypt
 from fastapi import Depends, HTTPException, status
@@ -14,6 +14,12 @@ from app.db.database import get_db
 from app.models import User
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
+
+# All valid roles in the system
+ALL_ROLES = {"sales_rep", "presales", "sales_manager", "superadmin"}
+
+# Roles that can be assigned during self-registration (NOT superadmin)
+PUBLIC_REGISTER_ROLES = {"sales_rep", "presales", "sales_manager"}
 
 
 def hash_password(password: str) -> str:
@@ -62,3 +68,46 @@ async def get_current_user(
     if user is None:
         raise credentials_exc
     return user
+
+
+async def get_current_active_user(
+    current_user: Annotated[User, Depends(get_current_user)],
+) -> User:
+    """Ensure the user account is active (not deactivated by superadmin)."""
+    if not current_user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Akun Anda dinonaktifkan. Hubungi administrator.",
+        )
+    return current_user
+
+
+def require_roles(*allowed_roles: str) -> Callable:
+    """Dependency factory: require the authenticated user to have one of the allowed roles.
+    Superadmin always passes regardless of allowed_roles."""
+    async def _check(
+        current_user: Annotated[User, Depends(get_current_active_user)],
+    ) -> User:
+        if current_user.is_superuser:
+            return current_user
+        if current_user.role not in allowed_roles:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Akses ditolak. Role '{current_user.role}' tidak memiliki izin ini.",
+            )
+        return current_user
+    return _check
+
+
+def require_superadmin() -> Callable:
+    """Dependency: require superadmin role."""
+    async def _check(
+        current_user: Annotated[User, Depends(get_current_active_user)],
+    ) -> User:
+        if not current_user.is_superuser and current_user.role != "superadmin":
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Akses ditolak. Hanya superadmin.",
+            )
+        return current_user
+    return _check

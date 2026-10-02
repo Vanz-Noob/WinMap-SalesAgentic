@@ -7,6 +7,7 @@ import { Sidebar } from "@/components/layout/Sidebar";
 import { Header } from "@/components/layout/Header";
 
 const publicPaths = ["/login", "/register"];
+const superadminPaths = ["/admin"];
 
 function LoadingSpinner({ label }: { label: string }) {
   return (
@@ -26,6 +27,8 @@ export function AuthWrapper({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const isPublicPath = publicPaths.includes(pathname);
+  const isSuperadminPath = superadminPaths.some((p) => pathname.startsWith(p));
+  const isSuperadmin = user?.is_superuser || user?.role === "superadmin";
 
   useEffect(() => {
     if (loading) return;
@@ -39,7 +42,13 @@ export function AuthWrapper({ children }: { children: React.ReactNode }) {
       router.replace("/");
       return;
     }
-  }, [user, loading, isPublicPath, router]);
+
+    // Role-based route protection: non-superadmin trying to access /admin
+    if (user && isSuperadminPath && !isSuperadmin) {
+      router.replace("/");
+      return;
+    }
+  }, [user, loading, isPublicPath, isSuperadminPath, isSuperadmin, router]);
 
   // Close sidebar on route change
   useEffect(() => {
@@ -59,6 +68,11 @@ export function AuthWrapper({ children }: { children: React.ReactNode }) {
 
   if (!user) {
     return <LoadingSpinner label="Mengalihkan ke login..." />;
+  }
+
+  // Block non-superadmin from /admin
+  if (isSuperadminPath && !isSuperadmin) {
+    return <LoadingSpinner label="Akses ditolak..." />;
   }
 
   // Authenticated, protected route — full layout with sidebar + header

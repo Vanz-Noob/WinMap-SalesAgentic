@@ -11,12 +11,14 @@ const pageTitles: Record<string, string> = {
   "/agents": "AI Agents",
   "/analytics": "Analytics",
   "/presales-kpi": "Presales KPI",
+  "/admin": "Admin Panel",
 };
 
 const roleLabels: Record<string, string> = {
   sales_rep: "Sales Rep",
   presales: "Presales",
   sales_manager: "Sales Manager",
+  superadmin: "Super Admin",
 };
 
 const searchablePages = [
@@ -26,6 +28,7 @@ const searchablePages = [
   { href: "/agents", label: "AI Agents", desc: "AI-powered sales assistants" },
   { href: "/analytics", label: "Analytics", desc: "Performance analytics" },
   { href: "/presales-kpi", label: "Presales KPI", desc: "Track presales KPIs" },
+  { href: "/admin", label: "Admin Panel", desc: "User management & RBAC" },
 ];
 
 interface HeaderProps {

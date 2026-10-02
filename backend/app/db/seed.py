@@ -42,18 +42,24 @@ async def seed():
         existing_users = (await db.execute(select(User))).scalars().all()
         if not existing_users:
             users_data = [
-                ("Andi Wijaya", "andi.wijaya@renrnd.com", "sales_rep", 500000000),
-                ("Siti Rahayu", "siti.rahayu@renrnd.com", "sales_rep", 500000000),
-                ("Budi Santoso", "budi.santoso@renrnd.com", "sales_rep", 400000000),
-                ("Dewi Lestari", "dewi.lestari@renrnd.com", "sales_manager", 1000000000),
-                ("Eka Pratama", "eka.pratama@renrnd.com", "presales", 0),
-                ("Fajar Nugroho", "fajar.nugroho@renrnd.com", "presales", 0),
+                ("Super Admin", "admin@winmap.id", "superadmin", 0, True, True),
+                ("Andi Wijaya", "andi.wijaya@renrnd.com", "sales_rep", 500000000, True, False),
+                ("Siti Rahayu", "siti.rahayu@renrnd.com", "sales_rep", 500000000, True, False),
+                ("Budi Santoso", "budi.santoso@renrnd.com", "sales_rep", 400000000, True, False),
+                ("Dewi Lestari", "dewi.lestari@renrnd.com", "sales_manager", 1000000000, True, False),
+                ("Eka Pratama", "eka.pratama@renrnd.com", "presales", 0, True, False),
+                ("Fajar Nugroho", "fajar.nugroho@renrnd.com", "presales", 0, True, False),
             ]
             default_pwd = hash_password("password123")
-            for name, email, role, quota in users_data:
-                db.add(User(name=name, email=email, role=role, quota=quota, password_hash=default_pwd))
+            for name, email, role, quota, is_active, is_superuser in users_data:
+                db.add(User(
+                    name=name, email=email, role=role, quota=quota,
+                    password_hash=default_pwd,
+                    is_active=is_active, is_superuser=is_superuser,
+                ))
             await db.flush()
             print(f"✅ Users: {len(users_data)} created (default password: password123)")
+            print(f"   Superadmin: admin@winmap.id / password123")
         else:
             # Ensure existing users have password_hash
             updated = 0

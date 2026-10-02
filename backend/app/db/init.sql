@@ -61,6 +61,8 @@ CREATE TABLE IF NOT EXISTS users (
     password_hash VARCHAR(255),
     role          VARCHAR(50) DEFAULT 'sales_rep',
     quota         DECIMAL(15,2) DEFAULT 0,
+    is_active     BOOLEAN DEFAULT TRUE,
+    is_superuser  BOOLEAN DEFAULT FALSE,
     created_at    TIMESTAMP DEFAULT NOW()
 );
 
@@ -157,6 +159,22 @@ DO $$
 BEGIN
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'users' AND column_name = 'password_hash') THEN
         ALTER TABLE users ADD COLUMN password_hash VARCHAR(255);
+    END IF;
+END $$;
+
+-- Add is_active column if not exists
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'users' AND column_name = 'is_active') THEN
+        ALTER TABLE users ADD COLUMN is_active BOOLEAN DEFAULT TRUE;
+    END IF;
+END $$;
+
+-- Add is_superuser column if not exists
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'users' AND column_name = 'is_superuser') THEN
+        ALTER TABLE users ADD COLUMN is_superuser BOOLEAN DEFAULT FALSE;
     END IF;
 END $$;
 CREATE INDEX IF NOT EXISTS idx_opp_close_date ON opportunities(close_date);
