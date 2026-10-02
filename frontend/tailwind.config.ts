@@ -18,7 +18,7 @@ const config: Config = {
         success: "#059669",
         warning: "#f59e0b",
         danger: "#ef4444",
-        muted: "#64748b",
+        muted: "#94a3b8",
       },
     },
   },

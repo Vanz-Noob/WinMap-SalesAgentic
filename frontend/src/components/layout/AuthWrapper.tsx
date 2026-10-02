@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth";
 import { Sidebar } from "@/components/layout/Sidebar";
@@ -23,40 +23,40 @@ export function AuthWrapper({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const { user, loading } = useAuth();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const isPublicPath = publicPaths.includes(pathname);
 
   useEffect(() => {
     if (loading) return;
 
-    // Not authenticated and trying to access a protected route -> redirect to login
     if (!user && !isPublicPath) {
       router.replace("/login");
       return;
     }
 
-    // Authenticated and on a public route (login/register) -> redirect to dashboard
     if (user && isPublicPath) {
       router.replace("/");
       return;
     }
   }, [user, loading, isPublicPath, router]);
 
-  // Show loading spinner while auth state is being determined
+  // Close sidebar on route change
+  useEffect(() => {
+    setSidebarOpen(false);
+  }, [pathname]);
+
   if (loading) {
     return <LoadingSpinner label="Memuat..." />;
   }
 
-  // Public pages (login/register) render without sidebar/header
   if (isPublicPath) {
-    // If user is already authenticated, show spinner while redirect fires
     if (user) {
       return <LoadingSpinner label="Mengalihkan..." />;
     }
     return <>{children}</>;
   }
 
-  // Protected route but not authenticated — show spinner while redirect fires
   if (!user) {
     return <LoadingSpinner label="Mengalihkan ke login..." />;
   }
@@ -64,10 +64,10 @@ export function AuthWrapper({ children }: { children: React.ReactNode }) {
   // Authenticated, protected route — full layout with sidebar + header
   return (
     <div className="flex h-screen overflow-hidden">
-      <Sidebar />
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <Header />
-        <main className="flex-1 overflow-y-auto p-6">{children}</main>
+      <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+      <div className="flex-1 flex flex-col overflow-hidden min-w-0">
+        <Header onMenuClick={() => setSidebarOpen(true)} />
+        <main className="flex-1 overflow-y-auto p-4 md:p-6">{children}</main>
       </div>
     </div>
   );

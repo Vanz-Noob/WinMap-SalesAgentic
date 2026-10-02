@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react";
 import { apiPost, apiFetch } from "@/lib/api";
 import { Card, CardHeader, Badge } from "@/components/ui/Card";
-import { Bot, Workflow, BarChart3, Play, Loader2, Download, FileSpreadsheet, Package, Filter, Sparkles } from "lucide-react";
+import { Bot, Workflow, BarChart3, Play, Loader2, Download, FileSpreadsheet, Sparkles, Info, ChevronUp } from "lucide-react";
 import type { User } from "@/types";
 
 export default function AgentsPage() {
@@ -21,6 +21,9 @@ export default function AgentsPage() {
   const [exportYear, setExportYear] = useState(2026);
   const [exportResult, setExportResult] = useState<Record<string, unknown> | null>(null);
   const [salesReps, setSalesReps] = useState<User[]>([]);
+
+  // Onboarding toggle
+  const [showGuide, setShowGuide] = useState(true);
 
   // Fetch sales reps for export filter dropdown
   useEffect(() => {
@@ -116,67 +119,107 @@ export default function AgentsPage() {
     {
       id: "opportunity",
       title: "Opportunity Agent",
-      subtitle: "Ekstrak entitas & BANT scoring dari raw text",
+      tagline: "Ubah catatan jadi deal",
       icon: Bot,
-      color: "primary",
       bgClass: "bg-primary/20",
       textClass: "text-primary",
-      description: "Agent ini menerima teks mentah (email, catatan meeting, dll), mengekstrak informasi penting menggunakan Skylark-lite, lalu melakukan BANT scoring dengan Skylark-pro. Jika skor > 0.5, opportunity baru otomatis dibuat di database.",
+      shortDesc: "Tempel teks dari email/chat/meeting, AI akan ekstrak info deal & kasih skor BANT otomatis.",
+      steps: "1. Salin teks → 2. Tempel di kotak → 3. Klik Run → 4. Deal otomatis dibuat jika skor > 50%",
     },
     {
       id: "pipeline",
       title: "Pipeline Agent",
-      subtitle: "Evaluasi semua deal aktif & rekomendasi",
+      tagline: "Cek kesehatan deal",
       icon: Workflow,
-      color: "accent",
       bgClass: "bg-accent/20",
       textClass: "text-accent",
-      description: "Agent ini memindai semua opportunity aktif, mengevaluasi setiap deal berdasarkan aktivitas dan konteks, mengupdate win probability, dan memberikan rekomendasi next best action + risk flags.",
+      shortDesc: "AI scan semua deal aktif, kasih win probability & next action yang harus dilakukan.",
+      steps: "1. Klik Scan → 2. Tunggu proses → 3. Lihat evaluasi per deal → 4. Ikuti rekomendasi AI",
     },
     {
       id: "briefing",
       title: "Insight Agent",
-      subtitle: "Daily briefing & forecast narasi",
+      tagline: "Briefing harian sales",
       icon: BarChart3,
-      color: "warning",
       bgClass: "bg-warning/20",
       textClass: "text-warning",
-      description: "Agent ini mengagregasi metrik pipeline (total weighted pipeline, deal count, avg probability) dan menghasilkan briefing narasi dengan insight, alert, dan rekomendasi menggunakan Skylark-pro.",
+      shortDesc: "Rangkuman harian: total pipeline, deal yang perlu perhatian, & forecast singkat.",
+      steps: "1. Klik Get Briefing → 2. Baca rangkuman → 3. Cek alert & rekomendasi",
     },
     {
       id: "export",
       title: "Export Agent",
-      subtitle: "Export pipeline & presales data ke CSV + AI summary",
+      tagline: "Export data + AI insight",
       icon: Download,
-      color: "emerald",
-      bgClass: "bg-emerald-500/20",
-      textClass: "text-emerald-400",
-      description: "Agent ini meng-export data pipeline (opportunities) atau presales KPI tracking ke format CSV. Mendukung filter berdasarkan stage pipeline, sales rep, kategori presales, quarter, dan year. AI juga generate summary & rekomendasi dari data yang di-export.",
+      bgClass: "bg-success/20",
+      textClass: "text-success",
+      shortDesc: "Download data pipeline/presales ke CSV lengkap dengan analisa & rekomendasi AI.",
+      steps: "1. Pilih tipe data → 2. Set filter → 3. Klik Export → 4. Download CSV atau baca AI summary",
     },
   ];
 
   return (
-    <div className="space-y-6">
-      <p className="text-sm text-muted">
-        Trigger AI agents secara manual atau biarkan Celery menjalankan task terjadwal (pipeline scan per jam, daily briefing per hari).
-      </p>
+    <div className="space-y-5">
+      {/* Onboarding Guide */}
+      {showGuide && (
+        <Card>
+          <div className="flex items-start justify-between gap-3 mb-3">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-lg bg-primary/20 flex items-center justify-center">
+                <Info size={16} className="text-primary" />
+              </div>
+              <h2 className="text-sm font-semibold text-white">Panduan AI Agents</h2>
+            </div>
+            <button
+              onClick={() => setShowGuide(false)}
+              className="text-muted hover:text-white transition-colors lg:hidden"
+              aria-label="Tutup panduan"
+            >
+              <ChevronUp size={18} />
+            </button>
+          </div>
+          <div className="space-y-2.5 text-sm text-muted leading-relaxed">
+            <p>
+              <span className="text-white font-medium">AI Agents</span> adalah asisten cerdas yang bantu kerjaan sales kamu.
+              Setiap agent punya fungsi berbeda — dari ekstrak deal baru, evaluasi pipeline, briefing harian, sampai export data.
+            </p>
+            <p>
+              <span className="text-white font-medium">Cara pake:</span> Scroll ke bawah, pilih agent yang mau dipake, ikuti instruksinya.
+              Beberapa agent juga <span className="text-white">jalan otomatis</span> di background (pipeline scan tiap jam, briefing tiap hari).
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-3">
+              <div className="bg-background/60 border border-border rounded-lg p-3">
+                <p className="text-xs text-white font-medium mb-1">⚡ Quick Start</p>
+                <p className="text-xs text-muted">Mulai dari <span className="text-primary">Opportunity Agent</span> — tempel catatan meeting, lihat AI bikin deal otomatis.</p>
+              </div>
+              <div className="bg-background/60 border border-border rounded-lg p-3">
+                <p className="text-xs text-white font-medium mb-1">💡 Tips</p>
+                <p className="text-xs text-muted">Pipeline & Insight Agent bisa dipake kapan aja untuk cek kondisi sales kamu saat ini.</p>
+              </div>
+            </div>
+          </div>
+        </Card>
+      )}
 
-      {/* Agent Cards */}
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
+      {/* Agent Cards - compact overview */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         {agentCards.map((agent) => {
           const Icon = agent.icon;
           return (
             <Card key={agent.id}>
-              <div className="flex items-start gap-3 mb-3">
-                <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${agent.bgClass}`}>
+              <div className="flex items-start gap-3">
+                <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${agent.bgClass}`}>
                   <Icon size={20} className={agent.textClass} />
                 </div>
-                <div>
-                  <h3 className="text-sm font-semibold text-white">{agent.title}</h3>
-                  <p className="text-xs text-muted">{agent.subtitle}</p>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-sm font-semibold text-white">{agent.title}</h3>
+                    <Badge color="muted" label={agent.tagline} />
+                  </div>
+                  <p className="text-xs text-muted mt-1 leading-relaxed">{agent.shortDesc}</p>
+                  <p className="text-[11px] text-muted/70 mt-2 leading-relaxed">{agent.steps}</p>
                 </div>
               </div>
-              <p className="text-xs text-muted mb-4 leading-relaxed">{agent.description}</p>
             </Card>
           );
         })}
@@ -184,13 +227,13 @@ export default function AgentsPage() {
 
       {/* Opportunity Agent Trigger */}
       <Card>
-        <CardHeader title="Opportunity Agent" subtitle="Masukkan teks raw (email, meeting note) untuk diekstrak" />
+        <CardHeader title="Opportunity Agent" subtitle="Tempel teks (email, chat, catatan meeting) untuk ekstrak deal otomatis" />
         <div className="space-y-3">
           <textarea
             value={opportunityInput}
             onChange={(e) => setOpportunityInput(e.target.value)}
             rows={4}
-            placeholder="contoh: PT Maju Jaya menghubungi kita, mereka butuh sistem CRM baru. Budget sekitar 500 juta, keputusan dalam 2 bulan. Contact: Budi, CTO."
+            placeholder="Contoh: PT Maju Jaya kontak kita, butuh sistem CRM. Budget 500 juta, keputusan 2 bulan. Contact: Budi, CTO."
             className="w-full bg-background border border-border rounded-lg px-4 py-3 text-white placeholder-muted text-sm focus:outline-none focus:border-primary resize-none"
           />
           <button
@@ -215,7 +258,7 @@ export default function AgentsPage() {
       {/* Pipeline & Insight Triggers */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <Card>
-          <CardHeader title="Pipeline Agent" subtitle="Scan 5 deal aktif (limit untuk performance)" />
+          <CardHeader title="Pipeline Agent" subtitle="Scan 5 deal aktif untuk evaluasi & next action" />
           <button
             onClick={runPipelineScan}
             disabled={loading === "pipeline"}
@@ -235,7 +278,7 @@ export default function AgentsPage() {
         </Card>
 
         <Card>
-          <CardHeader title="Insight Agent" subtitle="Generate daily briefing" />
+          <CardHeader title="Insight Agent" subtitle="Briefing harian: pipeline, alert & rekomendasi" />
           <button
             onClick={getBriefing}
             disabled={loading === "briefing"}
@@ -259,7 +302,7 @@ export default function AgentsPage() {
       <Card>
         <CardHeader
           title="Export Agent"
-          subtitle="Export pipeline atau presales data ke CSV dengan AI-generated summary"
+          subtitle="Export pipeline/presales data ke CSV + AI summary & rekomendasi"
         />
 
         {/* Data Type Toggle */}
@@ -268,7 +311,7 @@ export default function AgentsPage() {
             onClick={() => setExportDataType("pipeline")}
             className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
               exportDataType === "pipeline"
-                ? "bg-emerald-600 text-white"
+                ? "bg-success text-white"
                 : "bg-background border border-border text-muted hover:text-white"
             }`}
           >
@@ -279,7 +322,7 @@ export default function AgentsPage() {
             onClick={() => setExportDataType("presales")}
             className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
               exportDataType === "presales"
-                ? "bg-emerald-600 text-white"
+                ? "bg-success text-white"
                 : "bg-background border border-border text-muted hover:text-white"
             }`}
           >
@@ -289,7 +332,7 @@ export default function AgentsPage() {
         </div>
 
         {/* Filters */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
           {exportDataType === "pipeline" ? (
             <>
               <div>
@@ -376,7 +419,7 @@ export default function AgentsPage() {
           <button
             onClick={runExportAgent}
             disabled={loading === "export"}
-            className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+            className="flex items-center gap-2 bg-success hover:bg-success/80 disabled:opacity-50 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
           >
             {loading === "export" ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />}
             {loading === "export" ? "Exporting..." : "Export Data"}
@@ -412,7 +455,7 @@ export default function AgentsPage() {
                   </div>
                   <div className="bg-background border border-border rounded-lg p-3">
                     <p className="text-xs text-muted">Data Type</p>
-                    <p className="text-sm font-semibold text-emerald-400 capitalize">{exportResult.data_type as string}</p>
+                    <p className="text-sm font-semibold text-success capitalize">{exportResult.data_type as string}</p>
                   </div>
                   <div className="bg-background border border-border rounded-lg p-3">
                     <p className="text-xs text-muted">Columns</p>
@@ -428,9 +471,9 @@ export default function AgentsPage() {
 
                 {/* AI Summary */}
                 {!!exportResult.ai_summary && (
-                  <div className="bg-gradient-to-br from-emerald-500/10 to-primary/10 border border-emerald-500/30 rounded-lg p-4">
+                  <div className="bg-gradient-to-br from-success/10 to-primary/10 border border-success/30 rounded-lg p-4">
                     <div className="flex items-center gap-2 mb-3">
-                      <Sparkles size={16} className="text-emerald-400" />
+                      <Sparkles size={16} className="text-success" />
                       <p className="text-sm font-semibold text-white">AI Export Summary</p>
                     </div>
                     <p className="text-sm text-white mb-3">
@@ -454,7 +497,7 @@ export default function AgentsPage() {
                         <ul className="text-sm text-white space-y-1">
                           {((exportResult.ai_summary as Record<string, unknown>).recommendations as string[]).map((r, i) => (
                             <li key={i} className="flex items-start gap-2">
-                              <span className="text-emerald-400 mt-0.5">•</span>
+                              <span className="text-success mt-0.5">•</span>
                               {r}
                             </li>
                           ))}
