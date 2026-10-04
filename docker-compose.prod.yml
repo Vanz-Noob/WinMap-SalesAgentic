@@ -58,7 +58,7 @@ services:
       redis:
         condition: service_healthy
     restart: unless-stopped
-    command: gunicorn app.main:app -w 4 -k uvicorn.workers.UvicornWorker -b 0.0.0.0:8000
+    command: sh -c "python -m app.db.migrate && gunicorn app.main:app -w 4 -k uvicorn.workers.UvicornWorker -b 0.0.0.0:8000"
 
   celery_worker:
     build: ./backend
