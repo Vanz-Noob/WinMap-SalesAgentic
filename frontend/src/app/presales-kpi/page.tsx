@@ -152,6 +152,7 @@ export default function PresalesKpiPage() {
 
   // Simplified form data — removed description, unit, status (auto-calculated)
   const [formData, setFormData] = useState({
+    user_id: "",
     category: "",
     item_name: "",
     target: "",
@@ -220,6 +221,7 @@ export default function PresalesKpiPage() {
   const openAddForm = () => {
     const cats = summary?.categories ?? FALLBACK_CATEGORIES;
     setFormData({
+      user_id: isSuperadmin ? "" : (user?.id ?? ""),
       category: cats[0]?.key ?? "",
       item_name: "",
       target: "",
@@ -237,6 +239,7 @@ export default function PresalesKpiPage() {
       const targetNum = Number(formData.target) || 0;
       const status = autoCalculateStatus(actualNum, targetNum);
       await apiPost<PresalesKpiItem>("/presales-kpi", {
+        user_id: isSuperadmin ? (formData.user_id || undefined) : undefined,
         category: formData.category,
         item_name: formData.item_name,
         target: targetNum,
@@ -715,6 +718,37 @@ export default function PresalesKpiPage() {
             </div>
 
             <form onSubmit={handleAddSubmit} className="space-y-4">
+              {/* Assign Presales — presales users see only themselves (disabled), superadmin sees all */}
+              <div>
+                <label className="block text-xs text-muted mb-1.5">
+                  Assign Presales {isSuperadmin ? "*" : ""}
+                </label>
+                {isSuperadmin ? (
+                  <select
+                    required
+                    value={formData.user_id}
+                    onChange={(e) => setFormData({ ...formData, user_id: e.target.value })}
+                    className={SELECT_CLASS}
+                  >
+                    <option value="" disabled>
+                      Select presales...
+                    </option>
+                    {presalesUsers.map((u) => (
+                      <option key={u.id} value={u.id}>
+                        {u.name}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <input
+                    type="text"
+                    value={user?.name ?? ""}
+                    disabled
+                    className={INPUT_CLASS + " opacity-60 cursor-not-allowed"}
+                  />
+                )}
+              </div>
+
               <div>
                 <label className="block text-xs text-muted mb-1.5">Category *</label>
                 <select
