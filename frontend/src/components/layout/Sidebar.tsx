@@ -11,6 +11,7 @@ type NavItem = {
   label: string;
   icon: typeof LayoutDashboard;
   superadminOnly?: boolean;
+  presalesOnly?: boolean;
 };
 
 const navItems: NavItem[] = [
@@ -19,7 +20,7 @@ const navItems: NavItem[] = [
   { href: "/opportunities", label: "Opportunities", icon: Target },
   { href: "/agents", label: "AI Agents", icon: Bot },
   { href: "/analytics", label: "Analytics", icon: BarChart3 },
-  { href: "/presales-kpi", label: "Presales KPI", icon: ClipboardCheck },
+  { href: "/presales-kpi", label: "Presales KPI", icon: ClipboardCheck, presalesOnly: true },
   { href: "/admin", label: "Admin Panel", icon: ShieldCheck, superadminOnly: true },
 ];
 
@@ -40,8 +41,11 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
   const { user, logout } = useAuth();
 
   const isSuperadmin = user?.is_superuser || user?.role === "superadmin";
+  const isPresales = user?.role === "presales";
   const visibleItems = navItems.filter(
-    (item) => !item.superadminOnly || isSuperadmin
+    (item) =>
+      (!item.superadminOnly || isSuperadmin) &&
+      (!item.presalesOnly || isSuperadmin || isPresales)
   );
 
   return (

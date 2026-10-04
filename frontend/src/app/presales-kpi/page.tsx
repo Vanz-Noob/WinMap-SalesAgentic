@@ -133,7 +133,9 @@ function ProgressBar({
 
 export default function PresalesKpiPage() {
   const { user } = useAuth();
-  const isManager = user?.role === "sales_manager";
+  const isSuperadmin = user?.is_superuser || user?.role === "superadmin";
+  const isPresales = user?.role === "presales";
+  const canAccess = isSuperadmin || isPresales;
 
   const [summary, setSummary] = useState<PresalesKpiSummary | null>(null);
   const [loading, setLoading] = useState(true);
@@ -164,12 +166,12 @@ export default function PresalesKpiPage() {
     notes: "",
   });
 
-  // Role-based filtering: non-managers only see their own data
+  // Role-based filtering: presales users only see their own data; superadmin sees all
   useEffect(() => {
-    if (user && !isManager) {
+    if (user && !isSuperadmin) {
       setSelectedPresales(user.id);
     }
-  }, [user, isManager]);
+  }, [user, isSuperadmin]);
 
   const fetchSummary = useCallback(async () => {
     setLoading(true);
@@ -178,8 +180,8 @@ export default function PresalesKpiPage() {
       const params = new URLSearchParams();
       params.set("quarter", quarter);
       params.set("year", String(year));
-      // For non-managers, always filter by own user_id
-      const effectivePresales = isManager ? selectedPresales : (user?.id ?? "all");
+      // Presales users always filter by own user_id; superadmin can filter by selected
+      const effectivePresales = isSuperadmin ? selectedPresales : (user?.id ?? "all");
       if (effectivePresales !== "all") {
         params.set("user_id", effectivePresales);
       }
@@ -192,15 +194,15 @@ export default function PresalesKpiPage() {
     } finally {
       setLoading(false);
     }
-  }, [quarter, year, selectedPresales, isManager, user]);
+  }, [quarter, year, selectedPresales, isSuperadmin, user]);
 
   useEffect(() => {
     fetchSummary();
   }, [fetchSummary]);
 
-  // Fetch presales users for filter dropdown (managers only)
+  // Fetch presales users for filter dropdown (superadmin only)
   useEffect(() => {
-    if (!isManager) return;
+    if (!isSuperadmin) return;
     (async () => {
       try {
         const users = await apiFetch<User[]>("/accounts/users/list");
@@ -209,7 +211,7 @@ export default function PresalesKpiPage() {
         // silently ignore — filter just won't have options
       }
     })();
-  }, [isManager]);
+  }, [isSuperadmin]);
 
   // ── Actions ──────────────────────────────────────────────────────────────
 
@@ -317,6 +319,22 @@ export default function PresalesKpiPage() {
   const totalInProgress = summary?.total_in_progress ?? 0;
   const totalOverdue = summary?.total_overdue ?? 0;
 
+  // ── Access Control ─────────────────────────────────────────────────────
+
+  if (user && !canAccess) {
+    return (
+      <div className="flex flex-col items-center justify-center h-64 gap-3">
+        <AlertTriangle size={36} className="text-danger" />
+        <p className="text-danger text-sm font-medium">Akses Ditolak</p>
+        <p className="text-muted text-sm text-center max-w-md">
+          Presales tracking hanya untuk role <span className="text-white font-medium">presales</span> dan{" "}
+          <span className="text-white font-medium">superadmin</span>. Role Anda (
+          <span className="text-white font-medium">{user.role}</span>) tidak memiliki akses.
+        </p>
+      </div>
+    );
+  }
+
   // ── Initial Loading ──────────────────────────────────────────────────────
 
   if (loading && !summary) {
@@ -341,8 +359,8 @@ export default function PresalesKpiPage() {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          {/* Presales filter — only for managers */}
-          {isManager && (
+          {/* Presales filter — only for superadmin */}
+          {isSuperadmin && (
             <select
               value={selectedPresales}
               onChange={(e) => setSelectedPresales(e.target.value)}

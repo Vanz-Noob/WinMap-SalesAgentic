@@ -5,15 +5,22 @@
 - Relationship with Principal
 - Upselling & Cross-selling
 - Response Time
+
+RBAC:
+- Superadmin: full access (see all presales KPIs, filter by user)
+- Presales: only see/create/edit/delete own KPIs
+- Other roles (sales_rep, sales_manager): 403 Forbidden
 """
 from datetime import datetime
+from typing import Annotated
 from uuid import UUID
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
 from sqlalchemy import select, func, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.database import get_db
 from app.models import PresalesKpi, User
+from app.auth import get_current_active_user
 
 router = APIRouter(prefix="/presales-kpi", tags=["presales-kpi"])
 
@@ -133,22 +140,50 @@ def _to_response(kpi: PresalesKpi, user_name: str | None = None) -> dict:
     }
 
 
+# ---- RBAC helpers ----
+def _is_superadmin(user: User) -> bool:
+    return user.is_superuser or user.role == "superadmin"
+
+
+def _check_presales_access(user: User) -> None:
+    """Only superadmin and presales role can access presales KPI features.
+    Other roles (sales_rep, sales_manager) get 403.
+    """
+    if _is_superadmin(user) or user.role == "presales":
+        return
+    raise HTTPException(
+        status_code=status.HTTP_403_FORBIDDEN,
+        detail="Akses ditolak. Presales tracking hanya untuk role presales dan superadmin.",
+    )
+
+
 # ---- Endpoints ----
 @router.get("/categories")
-async def get_categories():
+async def get_categories(
+    current_user: Annotated[User, Depends(get_current_active_user)],
+):
     """Return metadata for all 6 presales KPI categories."""
+    _check_presales_access(current_user)
     return CATEGORIES
 
 
 @router.get("")
 async def list_kpis(
+    current_user: Annotated[User, Depends(get_current_active_user)],
     user_id: UUID | None = Query(None),
     category: str | None = Query(None),
     quarter: str | None = Query(None),
     year: int | None = Query(None),
     db: AsyncSession = Depends(get_db),
 ):
-    """List presales KPIs with optional filters."""
+    """List presales KPIs with optional filters.
+    Superadmin: can filter by any user_id. Presales: forced to own user_id only.
+    """
+    _check_presales_access(current_user)
+    # Presales users can only see their own KPIs
+    if not _is_superadmin(current_user):
+        user_id = current_user.id
+
     stmt = select(PresalesKpi, User.name).outerjoin(User, PresalesKpi.user_id == User.id)
 
     conditions = []
@@ -172,10 +207,19 @@ async def list_kpis(
 
 
 @router.post("", status_code=201)
-async def create_kpi(kpi_data: PresalesKpiCreate, db: AsyncSession = Depends(get_db)):
-    """Create a new presales KPI item."""
+async def create_kpi(
+    kpi_data: PresalesKpiCreate,
+    current_user: Annotated[User, Depends(get_current_active_user)],
+    db: AsyncSession = Depends(get_db),
+):
+    """Create a new presales KPI item.
+    Superadmin can assign to any user. Presales users can only create for themselves.
+    """
+    _check_presales_access(current_user)
+    effective_user_id = kpi_data.user_id if _is_superadmin(current_user) else current_user.id
+
     kpi = PresalesKpi(
-        user_id=kpi_data.user_id,
+        user_id=effective_user_id,
         category=kpi_data.category,
         item_name=kpi_data.item_name,
         description=kpi_data.description,
@@ -194,11 +238,26 @@ async def create_kpi(kpi_data: PresalesKpiCreate, db: AsyncSession = Depends(get
 
 
 @router.patch("/{kpi_id}")
-async def update_kpi(kpi_id: UUID, kpi_update: PresalesKpiUpdate, db: AsyncSession = Depends(get_db)):
-    """Update a presales KPI item (actual, status, notes, target)."""
+async def update_kpi(
+    kpi_id: UUID,
+    kpi_update: PresalesKpiUpdate,
+    current_user: Annotated[User, Depends(get_current_active_user)],
+    db: AsyncSession = Depends(get_db),
+):
+    """Update a presales KPI item (actual, status, notes, target).
+    Superadmin can edit any. Presales users can only edit their own.
+    """
+    _check_presales_access(current_user)
     kpi = await db.get(PresalesKpi, kpi_id)
     if not kpi:
         raise HTTPException(status_code=404, detail="Presales KPI not found")
+
+    # Presales users can only edit their own KPIs
+    if not _is_superadmin(current_user) and kpi.user_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Anda hanya dapat mengubah KPI milik Anda sendiri.",
+        )
 
     update_data = kpi_update.model_dump(exclude_unset=True)
     for field, value in update_data.items():
@@ -218,23 +277,46 @@ async def update_kpi(kpi_id: UUID, kpi_update: PresalesKpiUpdate, db: AsyncSessi
 
 
 @router.delete("/{kpi_id}", status_code=204)
-async def delete_kpi(kpi_id: UUID, db: AsyncSession = Depends(get_db)):
-    """Delete a presales KPI item."""
+async def delete_kpi(
+    kpi_id: UUID,
+    current_user: Annotated[User, Depends(get_current_active_user)],
+    db: AsyncSession = Depends(get_db),
+):
+    """Delete a presales KPI item.
+    Superadmin can delete any. Presales users can only delete their own.
+    """
+    _check_presales_access(current_user)
     kpi = await db.get(PresalesKpi, kpi_id)
     if not kpi:
         raise HTTPException(status_code=404, detail="Presales KPI not found")
+
+    # Presales users can only delete their own KPIs
+    if not _is_superadmin(current_user) and kpi.user_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Anda hanya dapat menghapus KPI milik Anda sendiri.",
+        )
+
     await db.delete(kpi)
     await db.commit()
 
 
 @router.get("/summary")
 async def get_summary(
+    current_user: Annotated[User, Depends(get_current_active_user)],
     quarter: str | None = Query(None),
     year: int | None = Query(None),
     user_id: UUID | None = Query(None),
     db: AsyncSession = Depends(get_db),
 ):
-    """Summary of all presales KPI categories with progress per category + overall score."""
+    """Summary of all presales KPI categories with progress per category + overall score.
+    Superadmin: can filter by any user_id. Presales: forced to own user_id only.
+    """
+    _check_presales_access(current_user)
+    # Presales users can only see their own KPIs
+    if not _is_superadmin(current_user):
+        user_id = current_user.id
+
     stmt = select(PresalesKpi)
     conditions = []
     if quarter:

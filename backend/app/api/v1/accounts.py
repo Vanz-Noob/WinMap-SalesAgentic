@@ -1,10 +1,12 @@
 """CRUD API for Accounts, Contacts, and Users."""
-from fastapi import APIRouter, Depends, HTTPException
+from typing import Annotated
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from app.db.database import get_db
 from app.models import Account, Contact, User
 from app.schemas.common import AccountCreate, AccountResponse, ContactCreate, ContactResponse, UserResponse
+from app.auth import get_current_active_user, require_superadmin
 import uuid
 
 router = APIRouter(prefix="/accounts", tags=["accounts"])
@@ -12,8 +14,11 @@ router = APIRouter(prefix="/accounts", tags=["accounts"])
 
 # ── Users ──────────────────────────────────
 @router.get("/users/list", response_model=list[UserResponse])
-async def list_users(db: AsyncSession = Depends(get_db)):
-    """List semua users (untuk filter dropdown)."""
+async def list_users(
+    current_user: Annotated[User, Depends(require_superadmin())],
+    db: AsyncSession = Depends(get_db),
+):
+    """List semua users (untuk filter dropdown). Superadmin only."""
     result = await db.execute(select(User).order_by(User.name))
     return result.scalars().all()
 
