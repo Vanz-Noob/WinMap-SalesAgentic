@@ -1,7 +1,7 @@
-"""Auth API endpoints: register, login, me."""
+"""Auth API endpoints: register, login, me, logout."""
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -14,15 +14,24 @@ from app.auth import (
     hash_password,
     verify_password,
 )
+from app.config import settings
 from app.db.database import get_db
 from app.models import User
 from app.schemas.auth import UserLogin, UserOut, UserRegister, TokenResponse
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
+_COOKIE_KWARGS = dict(
+    key="access_token",
+    httponly=True,
+    samesite="lax",
+    max_age=settings.JWT_EXPIRE_MINUTES * 60,
+    path="/",
+)
+
 
 @router.post("/register", response_model=TokenResponse, status_code=201)
-async def register(data: UserRegister, db: Annotated[AsyncSession, Depends(get_db)]):
+async def register(data: UserRegister, response: Response, db: Annotated[AsyncSession, Depends(get_db)]):
     """Self-registration — only allows non-superadmin roles (sales_rep, presales, sales_manager).
     Superadmin accounts can only be created via the admin API."""
     existing = await db.execute(select(User).where(User.email == data.email))
@@ -49,11 +58,13 @@ async def register(data: UserRegister, db: Annotated[AsyncSession, Depends(get_d
     await db.refresh(user)
 
     token = create_access_token({"sub": str(user.id), "role": user.role})
+    # Set httpOnly cookie so frontend JS cannot read the token (XSS protection)
+    response.set_cookie(secure=not settings.DEBUG, **_COOKIE_KWARGS, value=token)
     return TokenResponse(access_token=token, user=UserOut.model_validate(user))
 
 
 @router.post("/login", response_model=TokenResponse)
-async def login(data: UserLogin, db: Annotated[AsyncSession, Depends(get_db)]):
+async def login(data: UserLogin, response: Response, db: Annotated[AsyncSession, Depends(get_db)]):
     result = await db.execute(select(User).where(User.email == data.email))
     user = result.scalars().first()
 
@@ -70,7 +81,16 @@ async def login(data: UserLogin, db: Annotated[AsyncSession, Depends(get_db)]):
         )
 
     token = create_access_token({"sub": str(user.id), "role": user.role})
+    # Set httpOnly cookie so frontend JS cannot read the token (XSS protection)
+    response.set_cookie(secure=not settings.DEBUG, **_COOKIE_KWARGS, value=token)
     return TokenResponse(access_token=token, user=UserOut.model_validate(user))
+
+
+@router.post("/logout")
+async def logout(response: Response):
+    """Clear the auth cookie."""
+    response.delete_cookie(key="access_token", path="/")
+    return {"detail": "Logged out"}
 
 
 @router.get("/me", response_model=UserOut)

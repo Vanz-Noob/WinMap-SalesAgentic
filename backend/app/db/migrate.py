@@ -72,9 +72,21 @@ async def run_migrations():
                 """), {"email": "admin@winmap.id"})
                 print("  ✅ Upgraded admin@winmap.id to superadmin")
             else:
-                # Create new superadmin user
+                # Create new superadmin user — generate strong random password if env var not set
                 import bcrypt
-                password = os.environ.get("SUPERADMIN_PASSWORD", "password123")
+                import secrets as _secrets
+                import string as _string
+
+                password = os.environ.get("SUPERADMIN_PASSWORD")
+                if not password:
+                    # Generate a secure random password (24 chars, mixed case + digits)
+                    alphabet = _string.ascii_letters + _string.digits
+                    password = "".join(_secrets.choice(alphabet) for _ in range(24))
+                    print(f"\n{'='*60}")
+                    print("  ⚠️  SUPERADMIN PASSWORD (save this — shown only once):")
+                    print(f"     {password}")
+                    print(f"{'='*60}\n")
+
                 hashed = bcrypt.hashpw(
                     password.encode("utf-8"), bcrypt.gensalt()
                 ).decode("utf-8")

@@ -12,21 +12,29 @@ export default function PipelinePage() {
   const [users, setUsers] = useState<User[]>([]);
   const [selectedRep, setSelectedRep] = useState<string>("all");
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [draggedId, setDraggedId] = useState<string | null>(null);
 
   useEffect(() => {
+    // Fetch stages + opportunities first (these always work for any logged-in user)
     Promise.all([
       apiFetch<Stage[]>("/stages"),
       apiFetch<Opportunity[]>("/opportunities"),
-      apiFetch<User[]>("/accounts/users/list"),
-    ]).then(([s, o, u]) => {
-      // Tampilkan SEMUA stage (termasuk Closed Won & Closed Lost)
+    ]).then(([s, o]) => {
       setStages(s.sort((a, b) => a.order - b.order));
       setOpps(o);
-      setUsers(u);
     }).catch((err) => {
       console.error("Failed to fetch pipeline data:", err);
+      setError("Gagal memuat data pipeline. Silakan refresh halaman.");
     }).finally(() => setLoading(false));
+
+    // Fetch users list separately — only superadmin can access this endpoint.
+    // For non-superadmin, the filter dropdown simply won't show (user sees their own data only).
+    apiFetch<User[]>("/accounts/users/list")
+      .then((u) => setUsers(u))
+      .catch(() => {
+        // 403 is expected for non-superadmin — silently ignore, filter dropdown stays hidden
+      });
   }, []);
 
   const handleDrop = async (stageId: string) => {
@@ -51,6 +59,20 @@ export default function PipelinePage() {
     return <div className="flex items-center justify-center h-64 text-muted">Loading...</div>;
   }
 
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center h-64 gap-4">
+        <p className="text-danger text-sm">{error}</p>
+        <button
+          onClick={() => window.location.reload()}
+          className="px-4 py-2 bg-primary text-white rounded-lg text-sm hover:bg-primary/90"
+        >
+          Coba Lagi
+        </button>
+      </div>
+    );
+  }
+
   // Filter opportunities by selected sales rep
   const filteredOpps = selectedRep === "all"
     ? opps
@@ -64,19 +86,23 @@ export default function PipelinePage() {
           Drag &amp; drop opportunity antar stage. Klik card untuk edit detail. Perubahan otomatis tersimpan.
         </p>
         <div className="flex items-center gap-3">
-          <label className="text-xs text-muted uppercase tracking-wider">Filter Sales Rep:</label>
-          <select
-            value={selectedRep}
-            onChange={(e) => setSelectedRep(e.target.value)}
-            className="bg-card border border-border rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-primary cursor-pointer min-w-[180px]"
-          >
-            <option value="all">📊 Semua Sales Rep</option>
-            {users.map((u) => (
-              <option key={u.id} value={u.id}>
-                👤 {u.name}
-              </option>
-            ))}
-          </select>
+          {users.length > 0 && (
+            <>
+              <label className="text-xs text-muted uppercase tracking-wider">Filter Sales Rep:</label>
+              <select
+                value={selectedRep}
+                onChange={(e) => setSelectedRep(e.target.value)}
+                className="bg-card border border-border rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-primary cursor-pointer min-w-[180px]"
+              >
+                <option value="all">📊 Semua Sales Rep</option>
+                {users.map((u) => (
+                  <option key={u.id} value={u.id}>
+                    👤 {u.name}
+                  </option>
+                ))}
+              </select>
+            </>
+          )}
         </div>
       </div>
 

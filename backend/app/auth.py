@@ -3,7 +3,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Annotated, Callable, Iterable
 
 import bcrypt
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
 from sqlalchemy import select
@@ -13,7 +13,8 @@ from app.config import settings
 from app.db.database import get_db
 from app.models import User
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
+# auto_error=False so cookie-based auth can fall through gracefully
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login", auto_error=False)
 
 # All valid roles in the system
 ALL_ROLES = {"sales_rep", "presales", "sales_manager", "superadmin"}
@@ -47,7 +48,8 @@ def create_access_token(data: dict, expires_delta: timedelta | None = None) -> s
 
 
 async def get_current_user(
-    token: Annotated[str, Depends(oauth2_scheme)],
+    request: Request,
+    token: Annotated[str | None, Depends(oauth2_scheme)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> User:
     credentials_exc = HTTPException(
@@ -55,6 +57,11 @@ async def get_current_user(
         detail="Token tidak valid atau kedaluwarsa",
         headers={"WWW-Authenticate": "Bearer"},
     )
+    # Try Authorization header first, then fall back to httpOnly cookie
+    if not token:
+        token = request.cookies.get("access_token")
+    if not token:
+        raise credentials_exc
     try:
         payload = jwt.decode(token, settings.JWT_SECRET, algorithms=[settings.JWT_ALGORITHM])
         user_id: str | None = payload.get("sub")

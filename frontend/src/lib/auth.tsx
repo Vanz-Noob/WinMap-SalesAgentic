@@ -37,44 +37,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const router = useRouter();
 
-  // On mount: check localStorage for token + user, then validate via GET /auth/me
+  // On mount: validate session via GET /auth/me (cookie-based, no localStorage token)
   useEffect(() => {
-    const token = localStorage.getItem("token");
-    const storedUser = localStorage.getItem("user");
-
-    if (!token || !storedUser) {
-      setLoading(false);
-      return;
-    }
-
-    // Optimistically set the user from localStorage so the UI can render
-    try {
-      setUser(JSON.parse(storedUser));
-    } catch {
-      // ignore parse error
-    }
-
-    // Validate the token by calling GET /auth/me
     apiFetch<User>("/auth/me")
-      .then((me) => {
-        setUser(me);
-        localStorage.setItem("user", JSON.stringify(me));
-      })
-      .catch(() => {
-        // Token is invalid or expired — clear everything
-        localStorage.removeItem("token");
-        localStorage.removeItem("user");
-        setUser(null);
-      })
-      .finally(() => {
-        setLoading(false);
-      });
+      .then((me) => setUser(me))
+      .catch(() => setUser(null))
+      .finally(() => setLoading(false));
   }, []);
 
   const login = async (email: string, password: string) => {
     const res = await apiPost<AuthResponse>("/auth/login", { email, password });
-    localStorage.setItem("token", res.access_token);
-    localStorage.setItem("user", JSON.stringify(res.user));
     setUser(res.user);
   };
 
@@ -90,14 +62,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       password,
       role,
     });
-    localStorage.setItem("token", res.access_token);
-    localStorage.setItem("user", JSON.stringify(res.user));
     setUser(res.user);
   };
 
-  const logout = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
+  const logout = async () => {
+    try {
+      await apiPost("/auth/logout", {});
+    } catch {
+      // ignore — cookie will be cleared by backend response
+    }
     setUser(null);
     router.push("/login");
   };

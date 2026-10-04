@@ -1,29 +1,24 @@
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "";
 
-function getToken(): string | null {
-  if (typeof window === "undefined") return null;
-  return localStorage.getItem("token");
-}
-
+/**
+ * API helper — uses httpOnly cookie for auth (set by backend on login).
+ * credentials: "include" ensures cookies are sent with every request.
+ * No JWT in localStorage — protects against XSS token theft.
+ */
 export async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
-  const token = getToken();
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
     ...(options?.headers as Record<string, string>),
   };
-  if (token) {
-    headers["Authorization"] = `Bearer ${token}`;
-  }
 
   const res = await fetch(`${API_URL}/api/v1${path}`, {
     ...options,
     headers,
+    credentials: "include",
   });
 
   // Auto-redirect to login on 401
   if (res.status === 401 && typeof window !== "undefined") {
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
     window.location.href = "/login";
     throw new Error("Sesi berakhir, silakan login kembali.");
   }
