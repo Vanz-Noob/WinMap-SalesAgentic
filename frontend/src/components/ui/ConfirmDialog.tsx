@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useRef } from "react";
 import { AlertTriangle, type LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -26,12 +27,27 @@ export function ConfirmDialog({
   onConfirm,
   onCancel,
 }: ConfirmDialogProps) {
+  const confirmRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onCancel();
+    };
+    document.addEventListener("keydown", handleEscape);
+    confirmRef.current?.focus();
+    return () => document.removeEventListener("keydown", handleEscape);
+  }, [open, onCancel]);
+
   if (!open) return null;
 
   return (
     <div
       className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
       onClick={onCancel}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="confirm-dialog-title"
     >
       <div
         className="bg-card border border-border rounded-xl p-6 max-w-sm w-full shadow-2xl"
@@ -50,7 +66,7 @@ export function ConfirmDialog({
             />
           </div>
           <div className="flex-1 pt-0.5">
-            <h3 className="text-base font-semibold text-white">{title}</h3>
+            <h3 id="confirm-dialog-title" className="text-base font-semibold text-white">{title}</h3>
             <p className="text-sm text-muted mt-1 leading-relaxed">{message}</p>
           </div>
         </div>
@@ -58,10 +74,12 @@ export function ConfirmDialog({
           <button
             onClick={onCancel}
             className="px-4 py-2 border border-border text-muted hover:text-white hover:bg-border/30 rounded-lg text-sm transition-colors"
+            aria-label={cancelLabel}
           >
             {cancelLabel}
           </button>
           <button
+            ref={confirmRef}
             onClick={onConfirm}
             className={cn(
               "px-4 py-2 text-white rounded-lg text-sm font-medium transition-colors",
@@ -69,6 +87,7 @@ export function ConfirmDialog({
                 ? "bg-danger hover:bg-danger/80"
                 : "bg-primary hover:bg-secondary"
             )}
+            aria-label={confirmLabel}
           >
             {confirmLabel}
           </button>

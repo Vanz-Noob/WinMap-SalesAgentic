@@ -8,6 +8,7 @@ import type {
 import { Card, Badge } from "@/components/ui/Card";
 import { CardSkeleton, Skeleton } from "@/components/ui/Skeleton";
 import { OnboardingCard } from "@/components/ui/OnboardingCard";
+import { ErrorState } from "@/components/ui/ErrorState";
 import { formatCurrency, formatCompact, cn } from "@/lib/utils";
 import { toast } from "sonner";
 import Link from "next/link";
@@ -16,6 +17,7 @@ import {
   PieChart, Pie, Cell, Legend,
 } from "recharts";
 import { Briefcase, TrendingUp, Target, Layers, Activity, AlertTriangle, Clock, type LucideIcon } from "lucide-react";
+import { useMemo } from "react";
 
 const CHART_COLORS = ["#3b82f6", "#2563eb", "#1d4ed8", "#0d9488", "#059669", "#64748b"];
 const TROPHY_ICONS = ["🥇", "🥈", "🥉", "4️⃣", "5️⃣", "6️⃣"];
@@ -27,6 +29,7 @@ export default function DashboardPage() {
   const [targets, setTargets] = useState<TargetTracking | null>(null);
   const [insight, setInsight] = useState<PipelineInsight | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
 
   useEffect(() => {
     Promise.all([
@@ -44,8 +47,22 @@ export default function DashboardPage() {
     }).catch((err) => {
       console.error("Failed to fetch dashboard data:", err);
       toast.error("Gagal memuat data dashboard");
+      setError(true);
     }).finally(() => setLoading(false));
   }, []);
+
+  const refetch = () => window.location.reload();
+
+  const chartData = useMemo(() => summary.map((s) => ({
+    name: s.stage_name,
+    deals: s.deal_count,
+    value: s.total_value,
+  })), [summary]);
+
+  const pieData = useMemo(() => summary.filter((s) => s.deal_count > 0).map((s) => ({
+    name: s.stage_name,
+    value: s.deal_count,
+  })), [summary]);
 
   if (loading) {
     return (
@@ -64,6 +81,7 @@ export default function DashboardPage() {
       </div>
     );
   }
+  if (error) return <ErrorState onRetry={refetch} />;
 
   const totalPipeline = summary.reduce((acc, s) => acc + s.total_value, 0);
   const totalDeals = summary.reduce((acc, s) => acc + s.deal_count, 0);
@@ -73,17 +91,6 @@ export default function DashboardPage() {
   const avgProb = openStages.length > 0
     ? openStages.reduce((acc, s) => acc + s.avg_probability, 0) / openStages.length
     : 0;
-
-  const chartData = summary.map((s) => ({
-    name: s.stage_name,
-    deals: s.deal_count,
-    value: s.total_value,
-  }));
-
-  const pieData = summary.filter((s) => s.deal_count > 0).map((s) => ({
-    name: s.stage_name,
-    value: s.deal_count,
-  }));
 
   return (
     <div className="space-y-6">
@@ -494,12 +501,12 @@ export default function DashboardPage() {
                   <th className="text-center py-2 px-2">Rank</th>
                   <th className="text-left py-2 px-2">Sales Rep</th>
                   <th className="text-center py-2 px-2">Won</th>
-                  <th className="text-center py-2 px-2">Lost</th>
-                  <th className="text-center py-2 px-2">Open</th>
-                  <th className="text-right py-2 px-2">Won Revenue</th>
+                  <th className="text-center py-2 px-2 hidden sm:table-cell">Lost</th>
+                  <th className="text-center py-2 px-2 hidden md:table-cell">Open</th>
+                  <th className="text-right py-2 px-2 hidden sm:table-cell">Won Revenue</th>
                   <th className="text-center py-2 px-2">Win Rate</th>
-                  <th className="text-center py-2 px-2">Quota %</th>
-                  <th className="text-center py-2 px-2">Activities</th>
+                  <th className="text-center py-2 px-2 hidden md:table-cell">Quota %</th>
+                  <th className="text-center py-2 px-2 hidden lg:table-cell">Activities</th>
                   <th className="text-center py-2 px-2">Score</th>
                 </tr>
               </thead>
@@ -509,9 +516,9 @@ export default function DashboardPage() {
                     <td className="py-2.5 px-2 text-center text-lg">{TROPHY_ICONS[rep.rank - 1] || rep.rank}</td>
                     <td className="py-2.5 px-2 text-white font-medium">{rep.rep_name}</td>
                     <td className="py-2.5 px-2 text-center text-success font-semibold">{rep.won_deals}</td>
-                    <td className="py-2.5 px-2 text-center text-danger">{rep.lost_deals}</td>
-                    <td className="py-2.5 px-2 text-center text-muted">{rep.open_deals}</td>
-                    <td className="py-2.5 px-2 text-right text-white">{formatCompact(rep.won_revenue)}</td>
+                    <td className="py-2.5 px-2 text-center text-danger hidden sm:table-cell">{rep.lost_deals}</td>
+                    <td className="py-2.5 px-2 text-center text-muted hidden md:table-cell">{rep.open_deals}</td>
+                    <td className="py-2.5 px-2 text-right text-white hidden sm:table-cell">{formatCompact(rep.won_revenue)}</td>
                     <td className="py-2.5 px-2 text-center">
                       <div className="flex items-center justify-center gap-2">
                         <div className="w-12 bg-border rounded-full h-1.5">
@@ -520,8 +527,8 @@ export default function DashboardPage() {
                         <span className="text-muted text-xs">{rep.win_rate}%</span>
                       </div>
                     </td>
-                    <td className="py-2.5 px-2 text-center text-muted text-xs">{rep.quota_attainment}%</td>
-                    <td className="py-2.5 px-2 text-center text-muted">{rep.activity_count}</td>
+                    <td className="py-2.5 px-2 text-center text-muted text-xs hidden md:table-cell">{rep.quota_attainment}%</td>
+                    <td className="py-2.5 px-2 text-center text-muted hidden lg:table-cell">{rep.activity_count}</td>
                     <td className="py-2.5 px-2 text-center">
                       <Badge label={String(rep.composite_score)} color={rep.rank === 1 ? "warning" : "muted"} />
                     </td>

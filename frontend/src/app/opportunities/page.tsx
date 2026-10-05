@@ -105,11 +105,11 @@ export default function OpportunitiesPage() {
                   <th className="text-left py-3 px-3">Nama</th>
                   <th className="text-left py-3 px-3">Stage</th>
                   <th className="text-right py-3 px-3">Nilai</th>
-                  <th className="text-center py-3 px-3">Win %</th>
-                  <th className="text-center py-3 px-3">Presales</th>
-                  <th className="text-center py-3 px-3">Sumber</th>
-                  <th className="text-center py-3 px-3">Close Date</th>
-                  <th className="text-center py-3 px-3">Actions</th>
+                  <th className="text-center py-3 px-3 hidden md:table-cell">Win %</th>
+                  <th className="text-center py-3 px-3 hidden lg:table-cell">Presales</th>
+                  <th className="text-center py-3 px-3 hidden md:table-cell">Sumber</th>
+                  <th className="text-center py-3 px-3 hidden md:table-cell">Close Date</th>
+                  <th className="text-center py-3 px-3">Aksi</th>
                 </tr>
               </thead>
               <tbody>
@@ -126,7 +126,7 @@ export default function OpportunitiesPage() {
                         <Badge label={stage?.name || "Unknown"} color={stage?.is_won ? "success" : stage?.is_closed ? "danger" : "primary"} />
                       </td>
                       <td className="py-3 px-3 text-right text-white">{formatCurrency(opp.value, opp.currency)}</td>
-                      <td className="py-3 px-3 text-center">
+                      <td className="py-3 px-3 text-center hidden md:table-cell">
                         <div className="flex items-center justify-center gap-2">
                           <div className="w-16 bg-border rounded-full h-1.5">
                             <div className="bg-primary rounded-full h-1.5" style={{ width: `${opp.win_probability * 100}%` }} />
@@ -134,22 +134,23 @@ export default function OpportunitiesPage() {
                           <span className="text-muted text-xs">{Math.round(opp.win_probability * 100)}%</span>
                         </div>
                       </td>
-                      <td className="py-3 px-3 text-center">
+                      <td className="py-3 px-3 text-center hidden lg:table-cell">
                         {opp.presales_name ? (
                           <span className="text-muted text-xs">🛠 {opp.presales_name}</span>
                         ) : (
                           <span className="text-muted/40 text-xs">—</span>
                         )}
                       </td>
-                      <td className="py-3 px-3 text-center">
+                      <td className="py-3 px-3 text-center hidden md:table-cell">
                         {opp.source === "ai_agent" ? <Badge label="AI" color="accent" /> : <Badge label="Manual" color="muted" />}
                       </td>
-                      <td className="py-3 px-3 text-center text-muted text-xs">{formatDate(opp.close_date)}</td>
+                      <td className="py-3 px-3 text-center text-muted text-xs hidden md:table-cell">{formatDate(opp.close_date)}</td>
                       <td className="py-3 px-3 text-center">
                         <button
                           onClick={() => setDeleteId(opp.id)}
                           className="text-muted hover:text-danger transition-colors"
                           title="Hapus opportunity"
+                          aria-label={`Hapus ${opp.name}`}
                         >
                           <Trash2 size={16} />
                         </button>

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth";
 import { Logo } from "@/components/Logo";
+import { Eye, EyeOff } from "lucide-react";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -14,6 +15,7 @@ export default function RegisterPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [role, setRole] = useState("sales_rep");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -22,7 +24,6 @@ export default function RegisterPage() {
     e.preventDefault();
     setError("");
 
-    // Password validation
     if (password.length < 6) {
       setError("Password minimal 6 karakter.");
       return;
@@ -35,7 +36,6 @@ export default function RegisterPage() {
     setLoading(true);
 
     try {
-      // register() internally calls apiPost("/auth/register") and stores token + user in localStorage
       await register(name, email, password, role);
       router.push("/");
     } catch (err) {
@@ -65,7 +65,7 @@ export default function RegisterPage() {
           </h2>
 
           {error && (
-            <div className="bg-danger/10 border border-danger/30 text-danger rounded-lg px-4 py-3 mb-4 text-sm">
+            <div className="bg-danger/10 border border-danger/30 text-danger rounded-lg px-4 py-3 mb-4 text-sm" role="alert">
               {error}
             </div>
           )}
@@ -73,10 +73,11 @@ export default function RegisterPage() {
           <form onSubmit={handleSubmit} className="space-y-4">
             {/* Name */}
             <div>
-              <label className="block text-sm font-medium text-muted mb-1.5">
+              <label htmlFor="reg-name" className="block text-sm font-medium text-muted mb-1.5">
                 Nama Lengkap
               </label>
               <input
+                id="reg-name"
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
@@ -89,10 +90,11 @@ export default function RegisterPage() {
 
             {/* Email */}
             <div>
-              <label className="block text-sm font-medium text-muted mb-1.5">
+              <label htmlFor="reg-email" className="block text-sm font-medium text-muted mb-1.5">
                 Email
               </label>
               <input
+                id="reg-email"
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
@@ -105,27 +107,39 @@ export default function RegisterPage() {
 
             {/* Password */}
             <div>
-              <label className="block text-sm font-medium text-muted mb-1.5">
+              <label htmlFor="reg-password" className="block text-sm font-medium text-muted mb-1.5">
                 Password
               </label>
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                autoComplete="new-password"
-                className="w-full bg-background border border-border rounded-lg px-4 py-2.5 text-white placeholder:text-muted focus:outline-none focus:border-primary transition-colors"
-                placeholder="Minimal 6 karakter"
-              />
+              <div className="relative">
+                <input
+                  id="reg-password"
+                  type={showPassword ? "text" : "password"}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  autoComplete="new-password"
+                  className="w-full bg-background border border-border rounded-lg px-4 py-2.5 pr-11 text-white placeholder:text-muted focus:outline-none focus:border-primary transition-colors"
+                  placeholder="Minimal 6 karakter"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-white transition-colors"
+                  aria-label={showPassword ? "Sembunyikan password" : "Tampilkan password"}
+                >
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
             </div>
 
             {/* Confirm Password */}
             <div>
-              <label className="block text-sm font-medium text-muted mb-1.5">
+              <label htmlFor="reg-confirm" className="block text-sm font-medium text-muted mb-1.5">
                 Konfirmasi Password
               </label>
               <input
-                type="password"
+                id="reg-confirm"
+                type={showPassword ? "text" : "password"}
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 required
@@ -137,10 +151,11 @@ export default function RegisterPage() {
 
             {/* Role selector */}
             <div>
-              <label className="block text-sm font-medium text-muted mb-1.5">
+              <label htmlFor="reg-role" className="block text-sm font-medium text-muted mb-1.5">
                 Peran (Role)
               </label>
               <select
+                id="reg-role"
                 value={role}
                 onChange={(e) => setRole(e.target.value)}
                 className="w-full bg-background border border-border rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-primary transition-colors"

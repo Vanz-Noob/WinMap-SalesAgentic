@@ -13,9 +13,11 @@ export default function Error({
       <p className="text-sm text-muted text-center max-w-md">
         Maaf, terjadi error saat memuat halaman. Silakan coba lagi.
       </p>
-      <pre className="text-xs text-danger bg-card border border-border rounded-lg p-3 max-w-lg overflow-x-auto">
-        {error.message}
-      </pre>
+      {error.digest && (
+        <p className="text-xs text-muted/60">
+          Kode referensi: {error.digest}
+        </p>
+      )}
       <button
         onClick={reset}
         className="bg-primary hover:bg-secondary text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"

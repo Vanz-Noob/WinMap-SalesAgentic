@@ -4,6 +4,7 @@ import { apiFetch } from "@/lib/api";
 import type { AnalyticsData, DashboardSummary } from "@/types";
 import { Card, CardHeader, Badge } from "@/components/ui/Card";
 import { formatCurrency, formatCompact, cn } from "@/lib/utils";
+import { toast } from "sonner";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   LineChart, Line, Legend, AreaChart, Area, PieChart, Pie, Cell,
@@ -111,7 +112,11 @@ export default function AnalyticsPage() {
 
   useEffect(() => {
     Promise.all([
-      apiFetch<AnalyticsData>("/dashboard/analytics").catch(() => null),
+      apiFetch<AnalyticsData>("/dashboard/analytics").catch((err) => {
+        console.error("Failed to fetch analytics:", err);
+        toast.error("Gagal memuat data analytics");
+        return null;
+      }),
       apiFetch<DashboardSummary[]>("/dashboard/summary").catch(() => []),
       apiFetch<ForecastData[]>("/dashboard/forecast").catch(() => []),
     ]).then(([a, s, f]) => {

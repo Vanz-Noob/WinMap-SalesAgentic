@@ -11,6 +11,7 @@ import { toast } from "sonner";
 export default function NewOpportunityPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
+  const [dataLoading, setDataLoading] = useState(true);
   const [stages, setStages] = useState<Stage[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [form, setForm] = useState({
@@ -34,7 +35,10 @@ export default function NewOpportunityPage() {
       // Default stage = Prospecting
       const prospecting = s.find((st) => st.order === 1);
       if (prospecting) setForm((prev) => ({ ...prev, stage_id: prospecting.id }));
-    }).catch((err) => console.error("Failed to fetch stages/users:", err));
+    }).catch((err) => {
+      console.error("Failed to fetch stages/users:", err);
+      toast.error("Gagal memuat data stage dan user");
+    }).finally(() => setDataLoading(false));
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -84,6 +88,12 @@ export default function NewOpportunityPage() {
       <Card>
         <CardHeader title="New Opportunity" subtitle="Buat opportunity baru secara manual" />
         <form onSubmit={handleSubmit} className="space-y-4">
+          {dataLoading && (
+            <div className="bg-primary/10 border border-primary/20 rounded-lg px-4 py-2.5 text-sm text-primary flex items-center gap-2">
+              <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+              Memuat data stage dan user...
+            </div>
+          )}
           <div>
             <label className="block text-sm text-muted mb-1.5">Nama Opportunity *</label>
             <input

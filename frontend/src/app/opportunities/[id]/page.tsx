@@ -9,6 +9,7 @@ import Link from "next/link";
 import { ArrowLeft, Save, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { ErrorState } from "@/components/ui/ErrorState";
 
 export default function OpportunityDetailPage() {
   const { id } = useParams();
@@ -18,6 +19,7 @@ export default function OpportunityDetailPage() {
   const [activities, setActivities] = useState<Activity[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
   const [editing, setEditing] = useState(false);
   const [editForm, setEditForm] = useState({
     name: "", value: "", stage_id: "", win_probability: "", close_date: "", owner_id: ""
@@ -49,8 +51,16 @@ export default function OpportunityDetailPage() {
       });
     }).catch((err) => {
       console.error("Failed to fetch opportunity detail:", err);
+      toast.error("Gagal memuat detail opportunity");
+      setError(true);
     }).finally(() => setLoading(false));
   }, [id]);
+
+  const refetch = () => {
+    setLoading(true);
+    setError(false);
+    window.location.reload();
+  };
 
   const handleSave = async () => {
     if (!opp) return;
@@ -114,6 +124,7 @@ export default function OpportunityDetailPage() {
       <Skeleton className="h-48 rounded-xl" />
     </div>
   );
+  if (error) return <ErrorState onRetry={refetch} />;
   if (!opp) return <div className="text-muted text-center py-12">Opportunity not found</div>;
 
   const stageMap = new Map(stages.map((s) => [s.id, s]));
@@ -138,13 +149,32 @@ export default function OpportunityDetailPage() {
               </div>
             </div>
             {!editing ? (
-              <button onClick={() => setEditing(true)} className="text-primary hover:text-secondary text-sm font-medium">
+              <button onClick={() => setEditing(true)} className="text-primary hover:text-secondary text-sm font-medium" aria-label="Edit opportunity">
                 ✏️ Edit
               </button>
             ) : (
-              <button onClick={handleSave} className="flex items-center gap-1.5 text-success hover:text-accent text-sm font-medium">
-                <Save size={14} /> Simpan
-              </button>
+              <div className="flex items-center gap-3">
+                <button onClick={handleSave} className="flex items-center gap-1.5 text-success hover:text-accent text-sm font-medium" aria-label="Simpan perubahan">
+                  <Save size={14} /> Simpan
+                </button>
+                <button
+                  onClick={() => {
+                    setEditing(false);
+                    setEditForm({
+                      name: opp.name,
+                      value: String(opp.value),
+                      stage_id: opp.stage_id || "",
+                      win_probability: String(Math.round(opp.win_probability * 100)),
+                      close_date: opp.close_date ? opp.close_date.split("T")[0] : "",
+                      owner_id: opp.owner_id || "",
+                    });
+                  }}
+                  className="text-muted hover:text-white text-sm font-medium"
+                  aria-label="Batal edit"
+                >
+                  Batal
+                </button>
+              </div>
             )}
           </div>
 
