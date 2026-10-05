@@ -6,6 +6,7 @@ import { Card, CardHeader } from "@/components/ui/Card";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import type { Stage, User } from "@/types";
+import { toast } from "sonner";
 
 export default function NewOpportunityPage() {
   const router = useRouter();
@@ -38,11 +39,27 @@ export default function NewOpportunityPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Validation
+    if (!form.name.trim()) {
+      toast.error("Nama opportunity wajib diisi");
+      return;
+    }
+    const numValue = parseFloat(form.value);
+    if (isNaN(numValue) || numValue <= 0) {
+      toast.error("Nilai deal harus angka positif");
+      return;
+    }
+    if (!form.presales_id) {
+      toast.error("Presales wajib dipilih");
+      return;
+    }
+
     setLoading(true);
     try {
       await apiPost("/opportunities", {
-        name: form.name,
-        value: parseFloat(form.value),
+        name: form.name.trim(),
+        value: numValue,
         currency: form.currency,
         stage_id: form.stage_id || null,
         close_date: form.close_date || null,
@@ -50,9 +67,10 @@ export default function NewOpportunityPage() {
         owner_id: form.owner_id || null,
         presales_id: form.presales_id || null,
       });
+      toast.success("Opportunity berhasil dibuat");
       router.push("/opportunities");
     } catch (err) {
-      alert("Gagal membuat: " + (err as Error).message);
+      toast.error("Gagal membuat: " + (err as Error).message);
       setLoading(false);
     }
   };
@@ -83,11 +101,13 @@ export default function NewOpportunityPage() {
               <input
                 type="number"
                 required
+                min="0"
                 value={form.value}
                 onChange={(e) => setForm({ ...form, value: e.target.value })}
                 placeholder="500000000"
                 className="w-full bg-background border border-border rounded-lg px-4 py-2.5 text-white placeholder-muted focus:outline-none focus:border-primary"
               />
+              <p className="text-xs text-muted/60 mt-1">Estimasi nilai deal dalam mata uang yang dipilih</p>
             </div>
             <div>
               <label className="block text-sm text-muted mb-1.5">Currency</label>
@@ -121,6 +141,7 @@ export default function NewOpportunityPage() {
                 onChange={(e) => setForm({ ...form, close_date: e.target.value })}
                 className="w-full bg-background border border-border rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-primary"
               />
+              <p className="text-xs text-muted/60 mt-1">Estimasi tanggal deal akan ditutup</p>
             </div>
           </div>
           <div className="grid grid-cols-2 gap-4">

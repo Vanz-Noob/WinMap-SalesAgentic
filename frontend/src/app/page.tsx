@@ -6,7 +6,10 @@ import type {
   TargetTracking, PipelineInsight,
 } from "@/types";
 import { Card, Badge } from "@/components/ui/Card";
+import { CardSkeleton, Skeleton } from "@/components/ui/Skeleton";
+import { OnboardingCard } from "@/components/ui/OnboardingCard";
 import { formatCurrency, formatCompact, cn } from "@/lib/utils";
+import { toast } from "sonner";
 import Link from "next/link";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -40,11 +43,26 @@ export default function DashboardPage() {
       setInsight(pi);
     }).catch((err) => {
       console.error("Failed to fetch dashboard data:", err);
+      toast.error("Gagal memuat data dashboard");
     }).finally(() => setLoading(false));
   }, []);
 
   if (loading) {
-    return <div className="flex items-center justify-center h-64 text-muted">Loading...</div>;
+    return (
+      <div className="space-y-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Skeleton key={i} className="h-28 rounded-xl" />
+          ))}
+        </div>
+        <Card>
+          <CardSkeleton />
+        </Card>
+        <Card>
+          <CardSkeleton />
+        </Card>
+      </div>
+    );
   }
 
   const totalPipeline = summary.reduce((acc, s) => acc + s.total_value, 0);
@@ -69,6 +87,15 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6">
+      <OnboardingCard
+        storageKey="onboarding-dashboard"
+        title="Selamat datang di WinMap Dashboard"
+        tips={[
+          "Lihat ringkasan pipeline, target tracking, dan ranking sales rep di sini",
+          "Klik deal di Pipeline Insight untuk melihat detail opportunity",
+          "Gunakan menu di kiri untuk navigasi ke Pipeline, Opportunities, dan lainnya",
+        ]}
+      />
       {/* ── Pipeline Health Badge ── */}
       {insight && (
         <div className="flex flex-wrap items-center gap-3 p-3 bg-gradient-to-r from-emerald-500/10 to-blue-500/10 border border-emerald-500/20 rounded-xl">

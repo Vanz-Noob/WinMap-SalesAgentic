@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { AuthProvider } from "@/lib/auth";
 import { AuthWrapper } from "@/components/layout/AuthWrapper";
+import { Toaster } from "sonner";
 
 export const metadata: Metadata = {
   title: "WinMap — Sales Intelligence Platform",
@@ -22,6 +23,7 @@ export default function RootLayout({
         <AuthProvider>
           <AuthWrapper>{children}</AuthWrapper>
         </AuthProvider>
+        <Toaster theme="dark" position="top-right" richColors closeButton />
       </body>
     </html>
   );

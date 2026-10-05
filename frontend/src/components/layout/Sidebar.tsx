@@ -9,19 +9,20 @@ import { Logo } from "@/components/Logo";
 type NavItem = {
   href: string;
   label: string;
+  description: string;
   icon: typeof LayoutDashboard;
   superadminOnly?: boolean;
   presalesOnly?: boolean;
 };
 
 const navItems: NavItem[] = [
-  { href: "/", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/pipeline", label: "Pipeline", icon: KanbanSquare },
-  { href: "/opportunities", label: "Opportunities", icon: Target },
-  { href: "/agents", label: "AI Agents", icon: Bot },
-  { href: "/analytics", label: "Analytics", icon: BarChart3 },
-  { href: "/presales-kpi", label: "Presales KPI", icon: ClipboardCheck, presalesOnly: true },
-  { href: "/admin", label: "Admin Panel", icon: ShieldCheck, superadminOnly: true },
+  { href: "/", label: "Dashboard", description: "Ringkasan pipeline, target tracking & ranking sales", icon: LayoutDashboard },
+  { href: "/pipeline", label: "Pipeline", description: "Kelola deal dengan drag & drop kanban board", icon: KanbanSquare },
+  { href: "/opportunities", label: "Opportunities", description: "Daftar semua opportunity dan deal", icon: Target },
+  { href: "/agents", label: "AI Agents", description: "Kelola AI agent untuk auto-create deal", icon: Bot },
+  { href: "/analytics", label: "Analytics", description: "Laporan dan analisis sales", icon: BarChart3 },
+  { href: "/presales-kpi", label: "Presales KPI", description: "Kelola KPI tim presales", icon: ClipboardCheck, presalesOnly: true },
+  { href: "/admin", label: "Admin Panel", description: "Manajemen user, role & sistem", icon: ShieldCheck, superadminOnly: true },
 ];
 
 const roleLabels: Record<string, string> = {
@@ -85,6 +86,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                 key={item.href}
                 href={item.href}
                 onClick={onClose}
+                title={item.description}
                 className={cn(
                   "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors",
                   isActive
@@ -118,7 +120,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
             <button
               onClick={logout}
               className="p-2 text-muted hover:text-white hover:bg-border/50 rounded-lg transition-colors"
-              title="Logout"
+              title="Keluar dari sistem"
             >
               <LogOut size={18} />
             </button>

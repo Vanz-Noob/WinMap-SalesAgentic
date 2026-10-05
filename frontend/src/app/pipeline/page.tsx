@@ -3,7 +3,10 @@ import { useEffect, useState } from "react";
 import { apiFetch, apiPatch } from "@/lib/api";
 import type { Stage, Opportunity, User } from "@/types";
 import { Card, Badge } from "@/components/ui/Card";
+import { KanbanSkeleton, Skeleton } from "@/components/ui/Skeleton";
+import { OnboardingCard } from "@/components/ui/OnboardingCard";
 import { formatCompact, cn } from "@/lib/utils";
+import { toast } from "sonner";
 import Link from "next/link";
 
 export default function PipelinePage() {
@@ -48,15 +51,24 @@ export default function PipelinePage() {
 
     try {
       await apiPatch(`/opportunities/${draggedId}`, { stage_id: stageId });
+      toast.success(`Deal dipindahkan ke "${stages.find((s) => s.id === stageId)?.name || stageId}"`);
     } catch (err) {
       console.error("Failed to move:", err);
+      toast.error("Gagal memindahkan deal, mengembalikan ke posisi semula");
       // Revert on error
       setOpps((prev) => prev.map((o) => (o.id === draggedId ? { ...o, stage_id: opp.stage_id } : o)));
     }
   };
 
   if (loading) {
-    return <div className="flex items-center justify-center h-64 text-muted">Loading...</div>;
+    return (
+      <div className="space-y-4">
+        <div className="flex items-center justify-between flex-wrap gap-4">
+          <Skeleton className="h-4 w-72" />
+        </div>
+        <KanbanSkeleton />
+      </div>
+    );
   }
 
   if (error) {
@@ -80,6 +92,15 @@ export default function PipelinePage() {
 
   return (
     <div className="space-y-4">
+      <OnboardingCard
+        storageKey="onboarding-pipeline"
+        title="Cara menggunakan Pipeline"
+        tips={[
+          "Drag & drop card opportunity antar kolom stage untuk mengubah status deal",
+          "Klik card untuk melihat dan mengedit detail opportunity",
+          "Gunakan filter di kanan untuk melihat deal per sales rep tertentu",
+        ]}
+      />
       {/* Filter Bar */}
       <div className="flex items-center justify-between flex-wrap gap-4">
         <p className="text-sm text-muted">

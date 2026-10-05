@@ -7,6 +7,8 @@ import { Card, CardHeader, Badge } from "@/components/ui/Card";
 import { formatCurrency, formatDate, formatDateTime } from "@/lib/utils";
 import Link from "next/link";
 import { ArrowLeft, Save, Plus, Trash2 } from "lucide-react";
+import { toast } from "sonner";
+import { Skeleton } from "@/components/ui/Skeleton";
 
 export default function OpportunityDetailPage() {
   const { id } = useParams();
@@ -77,8 +79,9 @@ export default function OpportunityDetailPage() {
       const updated = await apiPatch<Opportunity>(`/opportunities/${opp.id}`, payload);
       setOpp(updated);
       setEditing(false);
+      toast.success("Opportunity berhasil diperbarui");
     } catch (err) {
-      alert("Gagal update: " + (err as Error).message);
+      toast.error("Gagal update: " + (err as Error).message);
     }
   };
 
@@ -93,14 +96,24 @@ export default function OpportunityDetailPage() {
       });
       setActivities((prev) => [created, ...prev]);
       setNewActivity({ type: "call", description: "" });
+      toast.success("Aktivitas berhasil ditambahkan");
     } catch (err) {
-      alert("Gagal menambah aktivitas: " + (err as Error).message);
+      toast.error("Gagal menambah aktivitas: " + (err as Error).message);
     } finally {
       setAddingActivity(false);
     }
   };
 
-  if (loading) return <div className="flex items-center justify-center h-64 text-muted">Loading...</div>;
+  if (loading) return (
+    <div className="max-w-4xl mx-auto space-y-6">
+      <Skeleton className="h-4 w-40" />
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <Skeleton className="lg:col-span-2 h-80 rounded-xl" />
+        <Skeleton className="h-80 rounded-xl" />
+      </div>
+      <Skeleton className="h-48 rounded-xl" />
+    </div>
+  );
   if (!opp) return <div className="text-muted text-center py-12">Opportunity not found</div>;
 
   const stageMap = new Map(stages.map((s) => [s.id, s]));
@@ -153,7 +166,7 @@ export default function OpportunityDetailPage() {
               {!editing ? (
                 <p className="text-2xl font-bold text-white">{formatCurrency(opp.value, opp.currency)}</p>
               ) : (
-                <input type="number" value={editForm.value} onChange={(e) => setEditForm({ ...editForm, value: e.target.value })}
+                <input type="number" min="0" value={editForm.value} onChange={(e) => setEditForm({ ...editForm, value: e.target.value })}
                   className="w-full bg-background border border-border rounded-lg px-3 py-2 text-white" />
               )}
             </div>
