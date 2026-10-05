@@ -5,7 +5,13 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.config import settings
 from app.auth import get_current_active_user
 
-app = FastAPI(title=settings.APP_NAME, version="1.0.0")
+app = FastAPI(
+    title=settings.APP_NAME,
+    version="1.0.0",
+    docs_url="/docs" if settings.DEBUG else None,
+    redoc_url="/redoc" if settings.DEBUG else None,
+    openapi_url="/openapi.json" if settings.DEBUG else None,
+)
 
 # CORS — allow production domain + localhost variants
 _cors_origins = [
