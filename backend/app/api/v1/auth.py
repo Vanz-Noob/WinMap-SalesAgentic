@@ -1,7 +1,7 @@
 """Auth API endpoints: register, login, me, logout."""
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -30,8 +30,19 @@ _COOKIE_KWARGS = dict(
 )
 
 
+def _is_https(request: Request) -> bool:
+    """Detect HTTPS from X-Forwarded-Proto header (set by CloudFlare/ALB/nginx)."""
+    forwarded_proto = request.headers.get("x-forwarded-proto", "")
+    return forwarded_proto == "https" or request.url.scheme == "https"
+
+
 @router.post("/register", response_model=TokenResponse, status_code=201)
-async def register(data: UserRegister, response: Response, db: Annotated[AsyncSession, Depends(get_db)]):
+async def register(
+    data: UserRegister,
+    response: Response,
+    request: Request,
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
     """Self-registration — only allows non-superadmin roles (sales_rep, presales, sales_manager).
     Superadmin accounts can only be created via the admin API."""
     existing = await db.execute(select(User).where(User.email == data.email))
@@ -59,12 +70,18 @@ async def register(data: UserRegister, response: Response, db: Annotated[AsyncSe
 
     token = create_access_token({"sub": str(user.id), "role": user.role})
     # Set httpOnly cookie so frontend JS cannot read the token (XSS protection)
-    response.set_cookie(secure=not settings.DEBUG, **_COOKIE_KWARGS, value=token)
+    # secure=True only when behind HTTPS (CloudFlare tunnel), not bare HTTP
+    response.set_cookie(secure=_is_https(request), **_COOKIE_KWARGS, value=token)
     return TokenResponse(access_token=token, user=UserOut.model_validate(user))
 
 
 @router.post("/login", response_model=TokenResponse)
-async def login(data: UserLogin, response: Response, db: Annotated[AsyncSession, Depends(get_db)]):
+async def login(
+    data: UserLogin,
+    response: Response,
+    request: Request,
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
     result = await db.execute(select(User).where(User.email == data.email))
     user = result.scalars().first()
 
@@ -82,7 +99,8 @@ async def login(data: UserLogin, response: Response, db: Annotated[AsyncSession,
 
     token = create_access_token({"sub": str(user.id), "role": user.role})
     # Set httpOnly cookie so frontend JS cannot read the token (XSS protection)
-    response.set_cookie(secure=not settings.DEBUG, **_COOKIE_KWARGS, value=token)
+    # secure=True only when behind HTTPS (CloudFlare tunnel), not bare HTTP
+    response.set_cookie(secure=_is_https(request), **_COOKIE_KWARGS, value=token)
     return TokenResponse(access_token=token, user=UserOut.model_validate(user))
 
 

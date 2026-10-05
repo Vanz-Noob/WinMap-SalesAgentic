@@ -163,9 +163,13 @@ export default function NewOpportunityPage() {
                 className="w-full bg-background border border-border rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-primary"
               >
                 <option value="">— Pilih Sales Rep —</option>
-                {users.filter((u) => u.role === "sales_rep").map((u) => (
-                  <option key={u.id} value={u.id}>{u.name}</option>
-                ))}
+                {users.filter((u) => u.role === "sales_rep" || u.role === "sales_manager").length === 0 ? (
+                  <option value="" disabled>Belum ada Sales Rep — tambah di Admin Panel</option>
+                ) : (
+                  users.filter((u) => u.role === "sales_rep" || u.role === "sales_manager").map((u) => (
+                    <option key={u.id} value={u.id}>{u.name}</option>
+                  ))
+                )}
               </select>
             </div>
             <div>

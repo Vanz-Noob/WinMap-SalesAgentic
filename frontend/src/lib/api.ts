@@ -28,11 +28,27 @@ export async function apiFetch<T>(path: string, options?: RequestInit): Promise<
     let message = `API Error ${res.status}`;
     try {
       const error = JSON.parse(text);
-      if (error?.detail) message = error.detail;
+      if (error?.detail) {
+        // Handle string detail (most common: "Email atau password salah.")
+        if (typeof error.detail === "string") {
+          message = error.detail;
+        }
+        // Handle array detail (FastAPI validation errors: [{msg: "..."}])
+        else if (Array.isArray(error.detail) && error.detail.length > 0) {
+          const first = error.detail[0];
+          message = first?.msg || first?.message || JSON.stringify(first);
+        }
+        // Handle object detail ({msg: "..."} or {message: "..."})
+        else if (typeof error.detail === "object") {
+          message = (error.detail as Record<string, string>).msg
+            || (error.detail as Record<string, string>).message
+            || JSON.stringify(error.detail);
+        }
+      }
     } catch {
       if (text) message = text;
     }
-    throw new Error(message);
+    throw new Error(String(message));
   }
   if (res.status === 204) return undefined as T;
   return res.json();
