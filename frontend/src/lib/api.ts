@@ -17,9 +17,14 @@ export async function apiFetch<T>(path: string, options?: RequestInit): Promise<
     credentials: "include",
   });
 
-  // Auto-redirect to login on 401
+  // Auto-redirect to login on 401 — but only from protected pages.
+  // Skip redirect when already on /login or /register to prevent infinite loop
+  // (AuthProvider calls /auth/me on every mount, which returns 401 when logged out).
   if (res.status === 401 && typeof window !== "undefined") {
-    window.location.href = "/login";
+    const path = window.location.pathname;
+    if (!path.startsWith("/login") && !path.startsWith("/register")) {
+      window.location.href = "/login";
+    }
     throw new Error("Sesi berakhir, silakan login kembali.");
   }
 
