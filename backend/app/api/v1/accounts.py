@@ -6,7 +6,7 @@ from sqlalchemy import select
 from app.db.database import get_db
 from app.models import Account, Contact, User
 from app.schemas.common import AccountCreate, AccountResponse, ContactCreate, ContactResponse, UserResponse
-from app.auth import get_current_active_user, require_superadmin
+from app.auth import get_current_active_user
 import uuid
 
 router = APIRouter(prefix="/accounts", tags=["accounts"])
@@ -15,11 +15,15 @@ router = APIRouter(prefix="/accounts", tags=["accounts"])
 # ── Users ──────────────────────────────────
 @router.get("/users/list", response_model=list[UserResponse])
 async def list_users(
-    current_user: Annotated[User, Depends(require_superadmin())],
+    current_user: Annotated[User, Depends(get_current_active_user)],
     db: AsyncSession = Depends(get_db),
 ):
-    """List semua users (untuk filter dropdown). Superadmin only."""
-    result = await db.execute(select(User).order_by(User.name))
+    """List user aktif untuk dropdown/filter pada halaman aplikasi."""
+    result = await db.execute(
+        select(User)
+        .where(User.is_active.is_(True))
+        .order_by(User.name)
+    )
     return result.scalars().all()
 
 
