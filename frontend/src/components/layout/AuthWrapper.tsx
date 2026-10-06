@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { Header } from "@/components/layout/Header";
+import { UserGuide } from "@/components/UserGuide";
 
 const publicPaths = ["/login", "/register"];
 const superadminPaths = ["/admin"];
@@ -83,6 +84,7 @@ export function AuthWrapper({ children }: { children: React.ReactNode }) {
         <Header onMenuClick={() => setSidebarOpen(true)} />
         <main className="flex-1 overflow-y-auto p-4 md:p-6">{children}</main>
       </div>
+      <UserGuide />
     </div>
   );
 }

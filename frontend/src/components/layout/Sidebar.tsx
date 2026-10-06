@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, KanbanSquare, Target, Bot, BarChart3, ClipboardCheck, LogOut, X, ShieldCheck } from "lucide-react";
+import { LayoutDashboard, KanbanSquare, Target, Bot, BarChart3, ClipboardCheck, LogOut, X, ShieldCheck, HelpCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/lib/auth";
 import { Logo } from "@/components/Logo";
@@ -101,6 +101,17 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
             );
           })}
         </nav>
+        {/* Panduan button */}
+        <div className="px-3 pb-2">
+          <button
+            onClick={() => window.dispatchEvent(new Event("winmap:show-guide"))}
+            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-muted hover:bg-border/50 hover:text-white transition-colors"
+            title="Tampilkan panduan penggunaan"
+          >
+            <HelpCircle size={18} />
+            Panduan
+          </button>
+        </div>
         <div className="p-4 border-t border-border">
           <div className="flex items-center gap-3">
             <div className={cn(
