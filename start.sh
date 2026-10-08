@@ -92,6 +92,40 @@ build_compose_cmd() {
     fi
 }
 
+# ── Force-kill container PIDs (apparmor workaround) ──
+# Saat docker stop gagal karena apparmor (permission denied),
+# kita kill PID container langsung via kill -9.
+force_kill_containers() {
+    local filter="${1:-name=rsa}"
+    local docker_cmd
+    if [[ ${#DOCKER_PREFIX[@]} -gt 0 ]]; then
+        docker_cmd=(sudo docker)
+    else
+        docker_cmd=(docker)
+    fi
+
+    local cids
+    cids=$("${docker_cmd[@]}" ps -q --filter "$filter" 2>/dev/null || true)
+    if [[ -z "$cids" ]]; then
+        return 0
+    fi
+
+    for cid in $cids; do
+        local pid
+        pid=$("${docker_cmd[@]}" inspect -f '{{.State.Pid}}' "$cid" 2>/dev/null || echo "0")
+        if [[ -n "$pid" ]] && [[ "$pid" != "0" ]]; then
+            echo -e "   ${YELLOW}Force-killing container ${cid:0:12} (PID=$pid)...${NC}"
+            kill -9 "$pid" 2>/dev/null || true
+        fi
+    done
+
+    # Wait briefly for kernel to reap processes
+    sleep 2
+
+    # Prune stopped containers so compose can recreate cleanly
+    "${docker_cmd[@]}" container prune -f &>/dev/null || true
+}
+
 # ── Parse Arguments ─────────────────────────
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -326,6 +360,10 @@ if [[ "$DO_BUILD" == true ]]; then
     BUILD_FLAG="--build"
     echo -e "   ${YELLOW}Force rebuild enabled${NC}"
 fi
+
+# Pre-start: force-kill any existing running containers (apparmor workaround)
+echo -e "   ${YELLOW}Pre-step: cleaning up existing containers...${NC}"
+force_kill_containers "name=rsa"
 
 "${COMPOSE_BASE[@]}" --env-file "$ENV_PATH" -f "$SCRIPT_DIR/$COMPOSE_FILE" up -d $BUILD_FLAG 2>&1 | while read -r line; do
     echo "   $line"

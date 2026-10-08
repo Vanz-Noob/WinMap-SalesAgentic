@@ -71,6 +71,40 @@ get_compose_base() {
     fi
 }
 
+# ── Force-kill container PIDs (apparmor workaround) ──
+# Saat docker stop gagal karena apparmor (permission denied),
+# kita kill PID container langsung via kill -9.
+force_kill_containers() {
+    local filter="${1:-name=rsa}"
+    local docker_cmd
+    if [[ ${#DOCKER_PREFIX[@]} -gt 0 ]]; then
+        docker_cmd=(sudo docker)
+    else
+        docker_cmd=(docker)
+    fi
+
+    local cids
+    cids=$("${docker_cmd[@]}" ps -q --filter "$filter" 2>/dev/null || true)
+    if [[ -z "$cids" ]]; then
+        return 0
+    fi
+
+    for cid in $cids; do
+        local pid
+        pid=$("${docker_cmd[@]}" inspect -f '{{.State.Pid}}' "$cid" 2>/dev/null || echo "0")
+        if [[ -n "$pid" ]] && [[ "$pid" != "0" ]]; then
+            echo -e "   ${YELLOW}Force-killing container ${cid:0:12} (PID=$pid)...${NC}"
+            kill -9 "$pid" 2>/dev/null || true
+        fi
+    done
+
+    # Wait briefly for kernel to reap processes
+    sleep 2
+
+    # Prune stopped containers so compose can recreate cleanly
+    "${docker_cmd[@]}" container prune -f &>/dev/null || true
+}
+
 # ── Parse Arguments ─────────────────────────
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -237,6 +271,11 @@ stop_stack() {
     # ── Stop services ─────────────────────────
     echo -e "${CYAN}[3/4]${NC} Stopping services..."
 
+    # Step 3a: Force-kill container PIDs (apparmor workaround)
+    echo -e "   ${YELLOW}Pre-step: force-killing running containers...${NC}"
+    force_kill_containers "name=rsa"
+
+    # Step 3b: docker compose down (cleanup stopped containers + networks)
     if [[ "$do_clean" == true ]]; then
         if [[ -f "$env_path" ]]; then
             "${compose_base[@]}" --env-file "$env_path" -f "$file_path" down -v --remove-orphans 2>&1 | while read -r line; do
@@ -274,8 +313,20 @@ stop_stack() {
     if [[ -z "$remaining" ]]; then
         echo -e "${GREEN}OK All services stopped${NC}"
     else
-        echo -e "${YELLOW}Warning: beberapa service masih running.${NC}"
-        echo -e "   Coba manual: ${CYAN}docker kill \$(docker ps -q --filter name=rsa)${NC}"
+        echo -e "${YELLOW}Warning: beberapa service masih running. Force-killing...${NC}"
+        force_kill_containers "name=rsa"
+        # Re-check
+        remaining=""
+        if [[ -f "$env_path" ]]; then
+            remaining=$("${compose_base[@]}" --env-file "$env_path" -f "$file_path" ps --format json 2>/dev/null | grep '"State":"running"' || true)
+        else
+            remaining=$("${compose_base[@]}" -f "$file_path" ps --format json 2>/dev/null | grep '"State":"running"' || true)
+        fi
+        if [[ -z "$remaining" ]]; then
+            echo -e "${GREEN}OK All services stopped (via force-kill)${NC}"
+        else
+            echo -e "${RED}Error: Masih ada service running. Coba: ${CYAN}sudo kill -9 \$(sudo docker ps -q --filter name=rsa)${NC}"
+        fi
     fi
 
     echo ""
