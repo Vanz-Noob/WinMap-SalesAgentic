@@ -108,15 +108,13 @@ async def update_opp(opp_id: str, data: OpportunityUpdate, db: AsyncSession = De
     await db.commit()
     await db.refresh(opp)
 
-    # Ambil presales_name via join (sama seperti GET)
-    PresalesUser = aliased(User)
-    presales_result = await db.execute(
-        select(PresalesUser.name.label("presales_name"))
-        .outerjoin(PresalesUser, Opportunity.presales_id == PresalesUser.id)
-        .where(Opportunity.id == opp_id)
-    )
-    row = presales_result.first()
-    presales_name = row.presales_name if row else None
+    # Ambil presales_name langsung dari tabel users
+    presales_name = None
+    if opp.presales_id:
+        presales_result = await db.execute(
+            select(User.name).where(User.id == opp.presales_id)
+        )
+        presales_name = presales_result.scalar_one_or_none()
 
     resp = OpportunityResponse.model_validate(opp)
     resp.presales_name = presales_name
