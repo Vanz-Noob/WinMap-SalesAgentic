@@ -22,7 +22,7 @@ export default function OpportunityDetailPage() {
   const [error, setError] = useState(false);
   const [editing, setEditing] = useState(false);
   const [editForm, setEditForm] = useState({
-    name: "", value: "", stage_id: "", win_probability: "", close_date: "", owner_id: ""
+    name: "", value: "", stage_id: "", win_probability: "", close_date: "", owner_id: "", presales_id: ""
   });
 
   // Form tambah aktivitas
@@ -48,6 +48,7 @@ export default function OpportunityDetailPage() {
         win_probability: String(Math.round(o.win_probability * 100)),
         close_date: o.close_date ? o.close_date.split("T")[0] : "",
         owner_id: o.owner_id || "",
+        presales_id: o.presales_id || "",
       });
     }).catch((err) => {
       console.error("Failed to fetch opportunity detail:", err);
@@ -79,6 +80,7 @@ export default function OpportunityDetailPage() {
         win_probability: clampedProb,
         close_date: editForm.close_date || null,
         owner_id: editForm.owner_id || null,
+        presales_id: editForm.presales_id || null,
       };
 
       if (!winProbChanged) {
@@ -146,6 +148,7 @@ export default function OpportunityDetailPage() {
                 <Badge label={opp.currency} color="muted" />
                 {opp.source === "ai_agent" && <Badge label="AI Created" color="accent" />}
                 {owner && <Badge label={`👤 ${owner.name}`} color="primary" />}
+                {opp.presales_name && <Badge label={`🛠 ${opp.presales_name}`} color="success" />}
               </div>
             </div>
             {!editing ? (
@@ -167,6 +170,7 @@ export default function OpportunityDetailPage() {
                       win_probability: String(Math.round(opp.win_probability * 100)),
                       close_date: opp.close_date ? opp.close_date.split("T")[0] : "",
                       owner_id: opp.owner_id || "",
+                      presales_id: opp.presales_id || "",
                     });
                   }}
                   className="text-muted hover:text-white text-sm font-medium"
@@ -253,6 +257,22 @@ export default function OpportunityDetailPage() {
                   className="w-full bg-background border border-border rounded-lg px-3 py-2 text-white">
                   <option value="">— Unassigned —</option>
                   {users.filter((u) => u.role === "sales_rep").map((u) => (
+                    <option key={u.id} value={u.id}>{u.name}</option>
+                  ))}
+                </select>
+              )}
+            </div>
+
+            {/* Presales */}
+            <div className="col-span-2">
+              <p className="text-xs text-muted uppercase mb-1">Presales</p>
+              {!editing ? (
+                <p className="text-white">{opp.presales_name || "Unassigned"}</p>
+              ) : (
+                <select value={editForm.presales_id} onChange={(e) => setEditForm({ ...editForm, presales_id: e.target.value })}
+                  className="w-full bg-background border border-border rounded-lg px-3 py-2 text-white">
+                  <option value="">— Pilih Presales —</option>
+                  {users.filter((u) => u.role === "presales").map((u) => (
                     <option key={u.id} value={u.id}>{u.name}</option>
                   ))}
                 </select>

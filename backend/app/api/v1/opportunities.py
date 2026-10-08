@@ -107,7 +107,20 @@ async def update_opp(opp_id: str, data: OpportunityUpdate, db: AsyncSession = De
 
     await db.commit()
     await db.refresh(opp)
-    return opp
+
+    # Ambil presales_name via join (sama seperti GET)
+    PresalesUser = aliased(User)
+    presales_result = await db.execute(
+        select(PresalesUser.name.label("presales_name"))
+        .outerjoin(PresalesUser, Opportunity.presales_id == PresalesUser.id)
+        .where(Opportunity.id == opp_id)
+    )
+    row = presales_result.first()
+    presales_name = row.presales_name if row else None
+
+    resp = OpportunityResponse.model_validate(opp)
+    resp.presales_name = presales_name
+    return resp
 
 
 @router.delete("/{opp_id}", status_code=204)
