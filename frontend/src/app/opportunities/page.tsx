@@ -118,14 +118,14 @@ export default function OpportunitiesPage() {
                   return (
                     <tr key={opp.id} className="border-b border-border/50 hover:bg-border/20">
                       <td className="py-3 px-3">
-                        <Link href={`/opportunities/${opp.id}`} className="text-white font-medium hover:text-primary">
+                        <Link href={`/opportunities/${opp.id}`} className="text-foreground font-medium hover:text-primary">
                           {opp.name}
                         </Link>
                       </td>
                       <td className="py-3 px-3">
                         <Badge label={stage?.name || "Unknown"} color={stage?.is_won ? "success" : stage?.is_closed ? "danger" : "primary"} />
                       </td>
-                      <td className="py-3 px-3 text-right text-white">{formatCurrency(opp.value, opp.currency)}</td>
+                      <td className="py-3 px-3 text-right text-foreground">{formatCurrency(opp.value, opp.currency)}</td>
                       <td className="py-3 px-3 text-center hidden md:table-cell">
                         <div className="flex items-center justify-center gap-2">
                           <div className="w-16 bg-border rounded-full h-1.5">

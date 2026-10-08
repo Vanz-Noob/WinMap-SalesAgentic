@@ -5,7 +5,7 @@ export default function NotFound() {
     <div className="flex flex-col items-center justify-center min-h-screen gap-6 p-8 bg-background">
       <div className="text-center">
         <h1 className="text-7xl font-bold text-primary mb-2">404</h1>
-        <h2 className="text-xl font-semibold text-white mb-2">
+        <h2 className="text-xl font-semibold text-foreground mb-2">
           Halaman Tidak Ditemukan
         </h2>
         <p className="text-sm text-muted max-w-md">
@@ -21,7 +21,7 @@ export default function NotFound() {
         </Link>
         <Link
           href="/opportunities"
-          className="border border-border text-muted hover:text-white hover:bg-border/30 px-5 py-2.5 rounded-lg text-sm transition-colors"
+          className="border border-border text-muted hover:text-foreground hover:bg-border/30 px-5 py-2.5 rounded-lg text-sm transition-colors"
         >
           Lihat Opportunities
         </Link>

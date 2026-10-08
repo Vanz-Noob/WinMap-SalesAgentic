@@ -80,11 +80,11 @@ export function Header({ onMenuClick }: HeaderProps) {
       <div className="flex items-center gap-3 min-w-0">
         <button
           onClick={onMenuClick}
-          className="md:hidden p-2 text-muted hover:text-white rounded-lg flex-shrink-0"
+          className="md:hidden p-2 text-muted hover:text-foreground rounded-lg flex-shrink-0"
         >
           <Menu size={22} />
         </button>
-        <h2 className="text-lg md:text-xl font-semibold text-white truncate">{title}</h2>
+        <h2 className="text-lg md:text-xl font-semibold text-foreground truncate">{title}</h2>
       </div>
 
       <div className="flex items-center gap-2 md:gap-4">
@@ -97,7 +97,7 @@ export function Header({ onMenuClick }: HeaderProps) {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             onFocus={() => setSearchFocused(true)}
-            className="bg-background border border-border rounded-lg pl-9 pr-4 py-1.5 text-sm text-white placeholder-muted w-28 sm:w-48 md:w-64 focus:outline-none focus:border-primary"
+            className="bg-background border border-border rounded-lg pl-9 pr-4 py-1.5 text-sm text-foreground placeholder-muted w-28 sm:w-48 md:w-64 focus:outline-none focus:border-primary"
           />
           {searchFocused && searchQuery && (
             <div className="absolute top-full mt-2 left-0 w-full min-w-[260px] bg-card border border-border rounded-lg shadow-xl z-50 overflow-hidden">
@@ -112,7 +112,7 @@ export function Header({ onMenuClick }: HeaderProps) {
                     }}
                     className="w-full text-left px-4 py-3 hover:bg-border/50 transition-colors flex flex-col"
                   >
-                    <span className="text-sm font-medium text-white">{page.label}</span>
+                    <span className="text-sm font-medium text-foreground">{page.label}</span>
                     <span className="text-xs text-muted">{page.desc}</span>
                   </button>
                 ))
@@ -126,7 +126,7 @@ export function Header({ onMenuClick }: HeaderProps) {
         {/* User info — hidden on small screens */}
         {user && (
           <div className="hidden lg:flex items-center gap-2">
-            <span className="text-sm font-medium text-white whitespace-nowrap">
+            <span className="text-sm font-medium text-foreground whitespace-nowrap">
               {user.name}
             </span>
             <span className="text-xs bg-primary/20 text-primary px-2 py-0.5 rounded-full whitespace-nowrap">
@@ -139,7 +139,7 @@ export function Header({ onMenuClick }: HeaderProps) {
         <div className="relative" ref={notifRef}>
           <button
             onClick={() => setNotifOpen(!notifOpen)}
-            className="relative p-2 text-muted hover:text-white rounded-lg transition-colors"
+            className="relative p-2 text-muted hover:text-foreground rounded-lg transition-colors"
           >
             <Bell size={20} />
             <span className="absolute top-1 right-1 w-2 h-2 bg-danger rounded-full" />
@@ -147,7 +147,7 @@ export function Header({ onMenuClick }: HeaderProps) {
           {notifOpen && (
             <div className="absolute top-full mt-2 right-0 w-72 sm:w-80 bg-card border border-border rounded-lg shadow-xl z-50 overflow-hidden">
               <div className="px-4 py-3 border-b border-border flex items-center justify-between">
-                <span className="text-sm font-semibold text-white">Notifications</span>
+                <span className="text-sm font-semibold text-foreground">Notifications</span>
                 <span className="text-xs text-muted">{notifications.length} new</span>
               </div>
               <div className="max-h-96 overflow-y-auto">
@@ -159,7 +159,7 @@ export function Header({ onMenuClick }: HeaderProps) {
                     <div className="flex items-start gap-3">
                       <div className="w-2 h-2 bg-primary rounded-full mt-1.5 flex-shrink-0" />
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-white">{n.title}</p>
+                        <p className="text-sm font-medium text-foreground">{n.title}</p>
                         <p className="text-xs text-muted mt-0.5">{n.desc}</p>
                         <p className="text-xs text-muted/80 mt-1">{n.time}</p>
                       </div>

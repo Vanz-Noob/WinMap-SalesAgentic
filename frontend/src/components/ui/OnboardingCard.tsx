@@ -28,7 +28,7 @@ export function OnboardingCard({ storageKey, title, tips }: OnboardingCardProps)
     <div className="bg-gradient-to-r from-primary/10 to-accent/5 border border-primary/20 rounded-xl p-4 relative">
       <button
         onClick={handleDismiss}
-        className="absolute top-3 right-3 text-muted hover:text-white transition-colors"
+        className="absolute top-3 right-3 text-muted hover:text-foreground transition-colors"
         title="Tutup tips"
       >
         <X size={16} />
@@ -38,7 +38,7 @@ export function OnboardingCard({ storageKey, title, tips }: OnboardingCardProps)
           <Lightbulb size={16} className="text-primary" />
         </div>
         <div className="flex-1 pr-6">
-          <h3 className="text-sm font-semibold text-white mb-2">{title}</h3>
+          <h3 className="text-sm font-semibold text-foreground mb-2">{title}</h3>
           <ul className="space-y-1.5">
             {tips.map((tip, i) => (
               <li key={i} className="text-xs text-muted flex items-start gap-2">

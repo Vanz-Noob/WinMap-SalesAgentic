@@ -4,12 +4,14 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth";
+import { useTheme } from "@/lib/theme";
 import { Logo } from "@/components/Logo";
 import { Eye, EyeOff } from "lucide-react";
 
 export default function LoginPage() {
   const router = useRouter();
   const { login } = useAuth();
+  const { theme } = useTheme();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -37,13 +39,13 @@ export default function LoginPage() {
       <div className="w-full max-w-md">
         {/* Branding */}
         <div className="flex flex-col items-center mb-8">
-          <Logo variant="dark" size={56} />
+          <Logo variant={theme === "light" ? "light" : "dark"} size={56} />
           <p className="text-muted mt-3">Sales Intelligence Platform</p>
         </div>
 
         {/* Card */}
         <div className="bg-card border border-border rounded-xl p-8">
-          <h2 className="text-xl font-semibold text-white mb-6">
+          <h2 className="text-xl font-semibold text-foreground mb-6">
             Masuk ke Akun Anda
           </h2>
 
@@ -66,7 +68,7 @@ export default function LoginPage() {
                 onChange={(e) => setEmail(e.target.value)}
                 required
                 autoComplete="email"
-                className="w-full bg-background border border-border rounded-lg px-4 py-2.5 text-white placeholder:text-muted focus:outline-none focus:border-primary transition-colors"
+                className="w-full bg-background border border-border rounded-lg px-4 py-2.5 text-foreground placeholder:text-muted focus:outline-none focus:border-primary transition-colors"
                 placeholder="nama@perusahaan.com"
               />
             </div>
@@ -84,13 +86,13 @@ export default function LoginPage() {
                   onChange={(e) => setPassword(e.target.value)}
                   required
                   autoComplete="current-password"
-                  className="w-full bg-background border border-border rounded-lg px-4 py-2.5 pr-11 text-white placeholder:text-muted focus:outline-none focus:border-primary transition-colors"
+                  className="w-full bg-background border border-border rounded-lg px-4 py-2.5 pr-11 text-foreground placeholder:text-muted focus:outline-none focus:border-primary transition-colors"
                   placeholder="Masukkan password"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-white transition-colors"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-foreground transition-colors"
                   aria-label={showPassword ? "Sembunyikan password" : "Tampilkan password"}
                 >
                   {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}

@@ -113,7 +113,7 @@ export default function AdminPage() {
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-white flex items-center gap-2">
+          <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
             <ShieldCheck size={28} className="text-accent" />
             Admin Panel
           </h1>
@@ -134,7 +134,7 @@ export default function AdminPage() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <Card className="p-4">
           <p className="text-xs text-muted uppercase tracking-wider">Total User</p>
-          <p className="text-2xl font-bold text-white mt-2">{users.length}</p>
+          <p className="text-2xl font-bold text-foreground mt-2">{users.length}</p>
         </Card>
         <Card className="p-4">
           <p className="text-xs text-muted uppercase tracking-wider">Aktif</p>
@@ -171,7 +171,7 @@ export default function AdminPage() {
           placeholder="Cari nama, email, atau role..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="w-full bg-background border border-border rounded-lg pl-9 pr-4 py-2 text-sm text-white placeholder-muted focus:outline-none focus:border-primary"
+          className="w-full bg-background border border-border rounded-lg pl-9 pr-4 py-2 text-sm text-foreground placeholder-muted focus:outline-none focus:border-primary"
         />
       </div>
 
@@ -213,7 +213,7 @@ export default function AdminPage() {
                             {u.name.charAt(0).toUpperCase()}
                           </div>
                           <div className="min-w-0">
-                            <p className="text-sm font-medium text-white truncate">
+                            <p className="text-sm font-medium text-foreground truncate">
                               {u.name}
                               {isSelf && <span className="text-xs text-muted ml-1">(Anda)</span>}
                             </p>
@@ -385,7 +385,7 @@ function RoleSelector({ currentRole, onChange }: { currentRole: string; onChange
                 }}
                 className={cn(
                   "w-full text-left px-3 py-2 text-sm hover:bg-border/50 transition-colors",
-                  r.value === currentRole ? "text-white font-medium" : "text-muted"
+                  r.value === currentRole ? "text-foreground font-medium" : "text-muted"
                 )}
               >
                 {r.label}
@@ -434,7 +434,7 @@ function CreateUserModal({ onClose, onCreated }: { onClose: () => void; onCreate
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
       <div className="bg-card border border-border rounded-xl w-full max-w-md p-6">
-        <h2 className="text-lg font-semibold text-white mb-4">Tambah User Baru</h2>
+        <h2 className="text-lg font-semibold text-foreground mb-4">Tambah User Baru</h2>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="text-xs text-muted uppercase tracking-wider">Nama</label>
@@ -442,7 +442,7 @@ function CreateUserModal({ onClose, onCreated }: { onClose: () => void; onCreate
               required
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-primary mt-1"
+              className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary mt-1"
             />
           </div>
           <div>
@@ -452,7 +452,7 @@ function CreateUserModal({ onClose, onCreated }: { onClose: () => void; onCreate
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-primary mt-1"
+              className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary mt-1"
             />
           </div>
           <div>
@@ -462,7 +462,7 @@ function CreateUserModal({ onClose, onCreated }: { onClose: () => void; onCreate
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-primary mt-1"
+              className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary mt-1"
             />
           </div>
           <div>
@@ -473,7 +473,7 @@ function CreateUserModal({ onClose, onCreated }: { onClose: () => void; onCreate
                 setRole(e.target.value);
                 setIsSuperuser(e.target.value === "superadmin");
               }}
-              className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-primary mt-1"
+              className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary mt-1"
             >
               {ROLE_OPTIONS.map((r) => (
                 <option key={r.value} value={r.value}>{r.label}</option>
@@ -487,7 +487,7 @@ function CreateUserModal({ onClose, onCreated }: { onClose: () => void; onCreate
                 type="number"
                 value={quota}
                 onChange={(e) => setQuota(Number(e.target.value))}
-                className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-primary mt-1"
+                className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary mt-1"
               />
             </div>
           )}
@@ -496,7 +496,7 @@ function CreateUserModal({ onClose, onCreated }: { onClose: () => void; onCreate
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 bg-border/50 text-white px-4 py-2 rounded-lg text-sm hover:bg-border transition-colors"
+              className="flex-1 bg-border/50 text-foreground px-4 py-2 rounded-lg text-sm hover:bg-border transition-colors"
             >
               Batal
             </button>
@@ -544,7 +544,7 @@ function PasswordResetModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
       <div className="bg-card border border-border rounded-xl w-full max-w-sm p-6">
-        <h2 className="text-lg font-semibold text-white mb-4">Reset Password</h2>
+        <h2 className="text-lg font-semibold text-foreground mb-4">Reset Password</h2>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="text-xs text-muted uppercase tracking-wider">Password Baru</label>
@@ -553,7 +553,7 @@ function PasswordResetModal({
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-primary mt-1"
+              className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary mt-1"
             />
           </div>
           <div>
@@ -563,7 +563,7 @@ function PasswordResetModal({
               type="password"
               value={confirm}
               onChange={(e) => setConfirm(e.target.value)}
-              className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-primary mt-1"
+              className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary mt-1"
             />
           </div>
           {error && <p className="text-sm text-danger">{error}</p>}
@@ -571,7 +571,7 @@ function PasswordResetModal({
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 bg-border/50 text-white px-4 py-2 rounded-lg text-sm hover:bg-border transition-colors"
+              className="flex-1 bg-border/50 text-foreground px-4 py-2 rounded-lg text-sm hover:bg-border transition-colors"
             >
               Batal
             </button>
@@ -606,7 +606,7 @@ function DeleteConfirmModal({
             <Trash2 size={20} className="text-danger" />
           </div>
           <div>
-            <h2 className="text-lg font-semibold text-white">Hapus User?</h2>
+            <h2 className="text-lg font-semibold text-foreground">Hapus User?</h2>
             <p className="text-sm text-muted">{userName}</p>
           </div>
         </div>
@@ -616,7 +616,7 @@ function DeleteConfirmModal({
         <div className="flex gap-3">
           <button
             onClick={onCancel}
-            className="flex-1 bg-border/50 text-white px-4 py-2 rounded-lg text-sm hover:bg-border transition-colors"
+            className="flex-1 bg-border/50 text-foreground px-4 py-2 rounded-lg text-sm hover:bg-border transition-colors"
           >
             Batal
           </button>

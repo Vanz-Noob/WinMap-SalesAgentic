@@ -168,11 +168,11 @@ export default function AgentsPage() {
               <div className="w-8 h-8 rounded-lg bg-primary/20 flex items-center justify-center">
                 <Info size={16} className="text-primary" />
               </div>
-              <h2 className="text-sm font-semibold text-white">Panduan AI Agents</h2>
+              <h2 className="text-sm font-semibold text-foreground">Panduan AI Agents</h2>
             </div>
             <button
               onClick={() => setShowGuide(false)}
-              className="text-muted hover:text-white transition-colors lg:hidden"
+              className="text-muted hover:text-foreground transition-colors lg:hidden"
               aria-label="Tutup panduan"
             >
               <ChevronUp size={18} />
@@ -180,20 +180,20 @@ export default function AgentsPage() {
           </div>
           <div className="space-y-2.5 text-sm text-muted leading-relaxed">
             <p>
-              <span className="text-white font-medium">AI Agents</span> adalah asisten cerdas yang bantu kerjaan sales kamu.
+              <span className="text-foreground font-medium">AI Agents</span> adalah asisten cerdas yang bantu kerjaan sales kamu.
               Setiap agent punya fungsi berbeda — dari ekstrak deal baru, evaluasi pipeline, briefing harian, sampai export data.
             </p>
             <p>
-              <span className="text-white font-medium">Cara pake:</span> Scroll ke bawah, pilih agent yang mau dipake, ikuti instruksinya.
-              Beberapa agent juga <span className="text-white">jalan otomatis</span> di background (pipeline scan tiap jam, briefing tiap hari).
+              <span className="text-foreground font-medium">Cara pake:</span> Scroll ke bawah, pilih agent yang mau dipake, ikuti instruksinya.
+              Beberapa agent juga <span className="text-foreground">jalan otomatis</span> di background (pipeline scan tiap jam, briefing tiap hari).
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-3">
               <div className="bg-background/60 border border-border rounded-lg p-3">
-                <p className="text-xs text-white font-medium mb-1">⚡ Quick Start</p>
+                <p className="text-xs text-foreground font-medium mb-1">⚡ Quick Start</p>
                 <p className="text-xs text-muted">Mulai dari <span className="text-primary">Opportunity Agent</span> — tempel catatan meeting, lihat AI bikin deal otomatis.</p>
               </div>
               <div className="bg-background/60 border border-border rounded-lg p-3">
-                <p className="text-xs text-white font-medium mb-1">💡 Tips</p>
+                <p className="text-xs text-foreground font-medium mb-1">💡 Tips</p>
                 <p className="text-xs text-muted">Pipeline & Insight Agent bisa dipake kapan aja untuk cek kondisi sales kamu saat ini.</p>
               </div>
             </div>
@@ -213,7 +213,7 @@ export default function AgentsPage() {
                 </div>
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
-                    <h3 className="text-sm font-semibold text-white">{agent.title}</h3>
+                    <h3 className="text-sm font-semibold text-foreground">{agent.title}</h3>
                     <Badge color="muted" label={agent.tagline} />
                   </div>
                   <p className="text-xs text-muted mt-1 leading-relaxed">{agent.shortDesc}</p>
@@ -234,7 +234,7 @@ export default function AgentsPage() {
             onChange={(e) => setOpportunityInput(e.target.value)}
             rows={4}
             placeholder="Contoh: PT Maju Jaya kontak kita, butuh sistem CRM. Budget 500 juta, keputusan 2 bulan. Contact: Budi, CTO."
-            className="w-full bg-background border border-border rounded-lg px-4 py-3 text-white placeholder-muted text-sm focus:outline-none focus:border-primary resize-none"
+            className="w-full bg-background border border-border rounded-lg px-4 py-3 text-foreground placeholder-muted text-sm focus:outline-none focus:border-primary resize-none"
           />
           <button
             onClick={runOpportunityAgent}
@@ -248,7 +248,7 @@ export default function AgentsPage() {
         {opportunityResult && (
           <div className="mt-4 bg-background border border-border rounded-lg p-4">
             <p className="text-xs text-muted uppercase mb-2">Result</p>
-            <pre className="text-xs text-white overflow-x-auto whitespace-pre-wrap">
+            <pre className="text-xs text-foreground overflow-x-auto whitespace-pre-wrap">
               {JSON.stringify(opportunityResult, null, 2)}
             </pre>
           </div>
@@ -270,7 +270,7 @@ export default function AgentsPage() {
           {pipelineResult && (
             <div className="mt-4 bg-background border border-border rounded-lg p-4 max-h-64 overflow-y-auto">
               <p className="text-xs text-muted uppercase mb-2">Result ({Array.isArray(pipelineResult) ? pipelineResult.length : 0} deals evaluated)</p>
-              <pre className="text-xs text-white overflow-x-auto whitespace-pre-wrap">
+              <pre className="text-xs text-foreground overflow-x-auto whitespace-pre-wrap">
                 {JSON.stringify(pipelineResult, null, 2)}
               </pre>
             </div>
@@ -290,7 +290,7 @@ export default function AgentsPage() {
           {briefingResult && (
             <div className="mt-4 bg-background border border-border rounded-lg p-4 max-h-64 overflow-y-auto">
               <p className="text-xs text-muted uppercase mb-2">Briefing</p>
-              <pre className="text-xs text-white overflow-x-auto whitespace-pre-wrap">
+              <pre className="text-xs text-foreground overflow-x-auto whitespace-pre-wrap">
                 {JSON.stringify(briefingResult, null, 2)}
               </pre>
             </div>
@@ -312,7 +312,7 @@ export default function AgentsPage() {
             className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
               exportDataType === "pipeline"
                 ? "bg-success text-white"
-                : "bg-background border border-border text-muted hover:text-white"
+                : "bg-background border border-border text-muted hover:text-foreground"
             }`}
           >
             <Workflow size={16} />
@@ -323,7 +323,7 @@ export default function AgentsPage() {
             className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
               exportDataType === "presales"
                 ? "bg-success text-white"
-                : "bg-background border border-border text-muted hover:text-white"
+                : "bg-background border border-border text-muted hover:text-foreground"
             }`}
           >
             <FileSpreadsheet size={16} />
@@ -340,7 +340,7 @@ export default function AgentsPage() {
                 <select
                   value={exportStageFilter}
                   onChange={(e) => setExportStageFilter(e.target.value)}
-                  className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-primary"
+                  className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary"
                 >
                   <option value="all">All Stages</option>
                   <option value="open">Open Deals Only</option>
@@ -357,7 +357,7 @@ export default function AgentsPage() {
                 <select
                   value={exportOwner}
                   onChange={(e) => setExportOwner(e.target.value)}
-                  className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-primary"
+                  className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary"
                 >
                   <option value="all">All Reps</option>
                   {salesReps.map((u) => (
@@ -375,7 +375,7 @@ export default function AgentsPage() {
                 <select
                   value={exportCategory}
                   onChange={(e) => setExportCategory(e.target.value)}
-                  className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-primary"
+                  className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary"
                 >
                   <option value="all">All Categories</option>
                   <option value="bundling_solution">Bundling Solution</option>
@@ -391,7 +391,7 @@ export default function AgentsPage() {
                 <select
                   value={exportQuarter}
                   onChange={(e) => setExportQuarter(e.target.value)}
-                  className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-primary"
+                  className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary"
                 >
                   <option value="Q1">Q1</option>
                   <option value="Q2">Q2</option>
@@ -404,7 +404,7 @@ export default function AgentsPage() {
                 <select
                   value={exportYear}
                   onChange={(e) => setExportYear(Number(e.target.value))}
-                  className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-primary"
+                  className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary"
                 >
                   <option value={2025}>2025</option>
                   <option value={2026}>2026</option>
@@ -441,7 +441,7 @@ export default function AgentsPage() {
             {/* Error */}
             {!!exportResult.error && (
               <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4">
-                <p className="text-sm text-red-400">{exportResult.error as string}</p>
+                <p className="text-sm text-danger">{exportResult.error as string}</p>
               </div>
             )}
 
@@ -451,7 +451,7 @@ export default function AgentsPage() {
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                   <div className="bg-background border border-border rounded-lg p-3">
                     <p className="text-xs text-muted">Records Exported</p>
-                    <p className="text-xl font-bold text-white">{exportResult.record_count as number}</p>
+                    <p className="text-xl font-bold text-foreground">{exportResult.record_count as number}</p>
                   </div>
                   <div className="bg-background border border-border rounded-lg p-3">
                     <p className="text-xs text-muted">Data Type</p>
@@ -459,11 +459,11 @@ export default function AgentsPage() {
                   </div>
                   <div className="bg-background border border-border rounded-lg p-3">
                     <p className="text-xs text-muted">Columns</p>
-                    <p className="text-sm font-semibold text-white">{(exportResult.columns as string[])?.length || 0}</p>
+                    <p className="text-sm font-semibold text-foreground">{(exportResult.columns as string[])?.length || 0}</p>
                   </div>
                   <div className="bg-background border border-border rounded-lg p-3">
                     <p className="text-xs text-muted">Exported At</p>
-                    <p className="text-sm font-semibold text-white">
+                    <p className="text-sm font-semibold text-foreground">
                       {new Date(exportResult.exported_at as string).toLocaleString()}
                     </p>
                   </div>
@@ -474,9 +474,9 @@ export default function AgentsPage() {
                   <div className="bg-gradient-to-br from-success/10 to-primary/10 border border-success/30 rounded-lg p-4">
                     <div className="flex items-center gap-2 mb-3">
                       <Sparkles size={16} className="text-success" />
-                      <p className="text-sm font-semibold text-white">AI Export Summary</p>
+                      <p className="text-sm font-semibold text-foreground">AI Export Summary</p>
                     </div>
-                    <p className="text-sm text-white mb-3">
+                    <p className="text-sm text-foreground mb-3">
                       {(exportResult.ai_summary as Record<string, unknown>).summary as string}
                     </p>
                     {!!(exportResult.ai_summary as Record<string, unknown>).key_metrics && (
@@ -494,7 +494,7 @@ export default function AgentsPage() {
                     {!!(exportResult.ai_summary as Record<string, unknown>).recommendations && (
                       <div>
                         <p className="text-xs text-muted uppercase mb-1">Recommendations</p>
-                        <ul className="text-sm text-white space-y-1">
+                        <ul className="text-sm text-foreground space-y-1">
                           {((exportResult.ai_summary as Record<string, unknown>).recommendations as string[]).map((r, i) => (
                             <li key={i} className="flex items-start gap-2">
                               <span className="text-success mt-0.5">•</span>
@@ -513,7 +513,7 @@ export default function AgentsPage() {
                     <p className="text-xs text-muted uppercase">Data Preview</p>
                     <Badge color="success" label={`${exportResult.record_count as number} rows`} />
                   </div>
-                  <pre className="text-xs text-white overflow-x-auto whitespace-pre-wrap">
+                  <pre className="text-xs text-foreground overflow-x-auto whitespace-pre-wrap">
                     {JSON.stringify(exportResult.data, null, 2).slice(0, 3000)}
                     {JSON.stringify(exportResult.data).length > 3000 && "\n\n... (truncated, download CSV for full data)"}
                   </pre>

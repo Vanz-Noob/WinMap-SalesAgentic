@@ -1,9 +1,10 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, KanbanSquare, Target, Bot, BarChart3, ClipboardCheck, LogOut, X, ShieldCheck, HelpCircle } from "lucide-react";
+import { LayoutDashboard, KanbanSquare, Target, Bot, BarChart3, ClipboardCheck, LogOut, X, ShieldCheck, HelpCircle, Sun, Moon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/lib/auth";
+import { useTheme } from "@/lib/theme";
 import { Logo } from "@/components/Logo";
 
 type NavItem = {
@@ -40,6 +41,7 @@ interface SidebarProps {
 export function Sidebar({ isOpen, onClose }: SidebarProps) {
   const pathname = usePathname();
   const { user, logout } = useAuth();
+  const { theme, toggleTheme } = useTheme();
 
   const isSuperadmin = user?.is_superuser || user?.role === "superadmin";
   const isPresales = user?.role === "presales";
@@ -67,15 +69,25 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
       >
         <div className="p-5 border-b border-border flex items-center justify-between">
           <div>
-            <Logo variant="dark" size={32} />
+            <Logo variant={theme === "light" ? "light" : "dark"} size={32} />
             <p className="text-xs text-muted mt-1.5 ml-11">Sales Intelligence Platform</p>
           </div>
-          <button
-            onClick={onClose}
-            className="md:hidden p-2 text-muted hover:text-white rounded-lg"
-          >
-            <X size={20} />
-          </button>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={toggleTheme}
+              className="p-2 text-muted hover:text-foreground hover:bg-border/50 rounded-lg transition-colors"
+              title={theme === "light" ? "Ganti ke dark mode" : "Ganti ke light mode"}
+              aria-label="Ganti tema terang/gelap"
+            >
+              {theme === "light" ? <Moon size={18} /> : <Sun size={18} />}
+            </button>
+            <button
+              onClick={onClose}
+              className="md:hidden p-2 text-muted hover:text-foreground rounded-lg"
+            >
+              <X size={20} />
+            </button>
+          </div>
         </div>
         <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
           {visibleItems.map((item) => {
@@ -91,7 +103,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                   "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors",
                   isActive
                     ? "bg-primary text-white"
-                    : "text-muted hover:bg-border/50 hover:text-white",
+                    : "text-muted hover:bg-border/50 hover:text-foreground",
                   item.superadminOnly && !isActive && "text-accent hover:text-accent"
                 )}
               >
@@ -105,7 +117,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
         <div className="px-3 pb-2">
           <button
             onClick={() => window.dispatchEvent(new Event("winmap:show-guide"))}
-            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-muted hover:bg-border/50 hover:text-white transition-colors"
+            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-muted hover:bg-border/50 hover:text-foreground transition-colors"
             title="Tampilkan panduan penggunaan"
           >
             <HelpCircle size={18} />
@@ -121,7 +133,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
               {user?.name?.charAt(0).toUpperCase() ?? "?"}
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-white truncate">
+              <p className="text-sm font-medium text-foreground truncate">
                 {user?.name ?? "Unknown"}
               </p>
               <p className="text-xs text-muted">
@@ -130,7 +142,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
             </div>
             <button
               onClick={logout}
-              className="p-2 text-muted hover:text-white hover:bg-border/50 rounded-lg transition-colors"
+              className="p-2 text-muted hover:text-foreground hover:bg-border/50 rounded-lg transition-colors"
               title="Keluar dari sistem"
             >
               <LogOut size={18} />

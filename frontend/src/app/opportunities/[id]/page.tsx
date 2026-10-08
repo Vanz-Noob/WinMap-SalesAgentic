@@ -134,7 +134,7 @@ export default function OpportunityDetailPage() {
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
-      <Link href="/opportunities" className="flex items-center gap-2 text-muted hover:text-white text-sm">
+      <Link href="/opportunities" className="flex items-center gap-2 text-muted hover:text-foreground text-sm">
         <ArrowLeft size={16} /> Kembali ke Opportunities
       </Link>
 
@@ -143,7 +143,7 @@ export default function OpportunityDetailPage() {
         <Card className="lg:col-span-2">
           <div className="flex justify-between items-start mb-4">
             <div>
-              <h2 className="text-xl font-bold text-white">{opp.name}</h2>
+              <h2 className="text-xl font-bold text-foreground">{opp.name}</h2>
               <div className="flex items-center gap-2 mt-2">
                 <Badge label={opp.currency} color="muted" />
                 {opp.source === "ai_agent" && <Badge label="AI Created" color="accent" />}
@@ -173,7 +173,7 @@ export default function OpportunityDetailPage() {
                       presales_id: opp.presales_id || "",
                     });
                   }}
-                  className="text-muted hover:text-white text-sm font-medium"
+                  className="text-muted hover:text-foreground text-sm font-medium"
                   aria-label="Batal edit"
                 >
                   Batal
@@ -187,10 +187,10 @@ export default function OpportunityDetailPage() {
             <div className="col-span-2">
               <p className="text-xs text-muted uppercase mb-1">Nama Opportunity</p>
               {!editing ? (
-                <p className="text-white font-medium">{opp.name}</p>
+                <p className="text-foreground font-medium">{opp.name}</p>
               ) : (
                 <input type="text" value={editForm.name} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
-                  className="w-full bg-background border border-border rounded-lg px-3 py-2 text-white" />
+                  className="w-full bg-background border border-border rounded-lg px-3 py-2 text-foreground" />
               )}
             </div>
 
@@ -198,10 +198,10 @@ export default function OpportunityDetailPage() {
             <div>
               <p className="text-xs text-muted uppercase mb-1">Nilai Deal</p>
               {!editing ? (
-                <p className="text-2xl font-bold text-white">{formatCurrency(opp.value, opp.currency)}</p>
+                <p className="text-2xl font-bold text-foreground">{formatCurrency(opp.value, opp.currency)}</p>
               ) : (
                 <input type="number" min="0" value={editForm.value} onChange={(e) => setEditForm({ ...editForm, value: e.target.value })}
-                  className="w-full bg-background border border-border rounded-lg px-3 py-2 text-white" />
+                  className="w-full bg-background border border-border rounded-lg px-3 py-2 text-foreground" />
               )}
             </div>
 
@@ -214,7 +214,7 @@ export default function OpportunityDetailPage() {
                 <div className="flex items-center gap-2">
                   <input type="number" step="1" min="0" max="100" value={editForm.win_probability}
                     onChange={(e) => setEditForm({ ...editForm, win_probability: e.target.value })}
-                    className="w-full bg-background border border-border rounded-lg px-3 py-2 text-white" />
+                    className="w-full bg-background border border-border rounded-lg px-3 py-2 text-foreground" />
                   <span className="text-muted text-lg">%</span>
                 </div>
               )}
@@ -227,10 +227,10 @@ export default function OpportunityDetailPage() {
             <div>
               <p className="text-xs text-muted uppercase mb-1">Stage</p>
               {!editing ? (
-                <p className="text-white">{stageMap.get(opp.stage_id || "")?.name || "Unknown"}</p>
+                <p className="text-foreground">{stageMap.get(opp.stage_id || "")?.name || "Unknown"}</p>
               ) : (
                 <select value={editForm.stage_id} onChange={(e) => setEditForm({ ...editForm, stage_id: e.target.value })}
-                  className="w-full bg-background border border-border rounded-lg px-3 py-2 text-white">
+                  className="w-full bg-background border border-border rounded-lg px-3 py-2 text-foreground">
                   {stages.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
                 </select>
               )}
@@ -240,10 +240,10 @@ export default function OpportunityDetailPage() {
             <div>
               <p className="text-xs text-muted uppercase mb-1">Close Date</p>
               {!editing ? (
-                <p className="text-white">{formatDate(opp.close_date)}</p>
+                <p className="text-foreground">{formatDate(opp.close_date)}</p>
               ) : (
                 <input type="date" value={editForm.close_date} onChange={(e) => setEditForm({ ...editForm, close_date: e.target.value })}
-                  className="w-full bg-background border border-border rounded-lg px-3 py-2 text-white" />
+                  className="w-full bg-background border border-border rounded-lg px-3 py-2 text-foreground" />
               )}
             </div>
 
@@ -251,10 +251,10 @@ export default function OpportunityDetailPage() {
             <div className="col-span-2">
               <p className="text-xs text-muted uppercase mb-1">Sales Rep (Owner)</p>
               {!editing ? (
-                <p className="text-white">{owner?.name || "Unassigned"}</p>
+                <p className="text-foreground">{owner?.name || "Unassigned"}</p>
               ) : (
                 <select value={editForm.owner_id} onChange={(e) => setEditForm({ ...editForm, owner_id: e.target.value })}
-                  className="w-full bg-background border border-border rounded-lg px-3 py-2 text-white">
+                  className="w-full bg-background border border-border rounded-lg px-3 py-2 text-foreground">
                   <option value="">— Unassigned —</option>
                   {users.filter((u) => u.role === "sales_rep").map((u) => (
                     <option key={u.id} value={u.id}>{u.name}</option>
@@ -267,10 +267,10 @@ export default function OpportunityDetailPage() {
             <div className="col-span-2">
               <p className="text-xs text-muted uppercase mb-1">Presales</p>
               {!editing ? (
-                <p className="text-white">{opp.presales_name || "Unassigned"}</p>
+                <p className="text-foreground">{opp.presales_name || "Unassigned"}</p>
               ) : (
                 <select value={editForm.presales_id} onChange={(e) => setEditForm({ ...editForm, presales_id: e.target.value })}
-                  className="w-full bg-background border border-border rounded-lg px-3 py-2 text-white">
+                  className="w-full bg-background border border-border rounded-lg px-3 py-2 text-foreground">
                   <option value="">— Pilih Presales —</option>
                   {users.filter((u) => u.role === "presales").map((u) => (
                     <option key={u.id} value={u.id}>{u.name}</option>
@@ -287,20 +287,20 @@ export default function OpportunityDetailPage() {
           <div className="space-y-3 text-sm">
             <div>
               <p className="text-xs text-muted">Created</p>
-              <p className="text-white">{formatDateTime(opp.created_at)}</p>
+              <p className="text-foreground">{formatDateTime(opp.created_at)}</p>
             </div>
             <div>
               <p className="text-xs text-muted">Last Updated</p>
-              <p className="text-white">{formatDateTime(opp.updated_at)}</p>
+              <p className="text-foreground">{formatDateTime(opp.updated_at)}</p>
             </div>
             <div>
               <p className="text-xs text-muted">Sumber</p>
-              <p className="text-white">{opp.source || "manual"}</p>
+              <p className="text-foreground">{opp.source || "manual"}</p>
             </div>
             {opp.ai_metadata && (
               <div>
                 <p className="text-xs text-muted">AI Metadata</p>
-                <pre className="text-xs text-white bg-background p-2 rounded-lg overflow-x-auto max-h-48">
+                <pre className="text-xs text-foreground bg-background p-2 rounded-lg overflow-x-auto max-h-48">
                   {JSON.stringify(opp.ai_metadata, null, 2)}
                 </pre>
               </div>
@@ -318,7 +318,7 @@ export default function OpportunityDetailPage() {
           <select
             value={newActivity.type}
             onChange={(e) => setNewActivity({ ...newActivity, type: e.target.value })}
-            className="bg-background border border-border rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-primary"
+            className="bg-background border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary"
           >
             <option value="call">📞 Call</option>
             <option value="email">✉️ Email</option>
@@ -331,7 +331,7 @@ export default function OpportunityDetailPage() {
             onChange={(e) => setNewActivity({ ...newActivity, description: e.target.value })}
             placeholder="Deskripsi aktivitas..."
             onKeyDown={(e) => { if (e.key === "Enter") handleAddActivity(); }}
-            className="flex-1 bg-background border border-border rounded-lg px-3 py-2 text-sm text-white placeholder-muted focus:outline-none focus:border-primary"
+            className="flex-1 bg-background border border-border rounded-lg px-3 py-2 text-sm text-foreground placeholder-muted focus:outline-none focus:border-primary"
           />
           <button
             onClick={handleAddActivity}
@@ -358,7 +358,7 @@ export default function OpportunityDetailPage() {
                     <Badge label={act.type} color="primary" />
                     <span className="text-xs text-muted">{formatDateTime(act.created_at)}</span>
                   </div>
-                  <p className="text-sm text-white mt-1">{act.description}</p>
+                  <p className="text-sm text-foreground mt-1">{act.description}</p>
                 </div>
               </div>
             ))

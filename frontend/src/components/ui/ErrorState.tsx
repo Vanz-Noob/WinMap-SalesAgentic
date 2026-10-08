@@ -18,7 +18,7 @@ export function ErrorState({
         <AlertCircle size={28} className="text-danger" />
       </div>
       <div className="text-center max-w-sm">
-        <h3 className="text-base font-semibold text-white">{title}</h3>
+        <h3 className="text-base font-semibold text-foreground">{title}</h3>
         <p className="text-sm text-muted mt-1">{message}</p>
       </div>
       {onRetry && (

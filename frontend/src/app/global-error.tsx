@@ -12,7 +12,7 @@ export default function GlobalError({
       <body>
         <div className="flex flex-col items-center justify-center min-h-screen gap-4 p-8 bg-background">
           <div className="text-center">
-            <h1 className="text-2xl font-bold text-white mb-2">
+            <h1 className="text-2xl font-bold text-foreground mb-2">
               Terjadi Kesalahan Sistem
             </h1>
             <p className="text-sm text-muted max-w-md">

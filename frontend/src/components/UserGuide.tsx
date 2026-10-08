@@ -174,7 +174,7 @@ export function UserGuide() {
         {/* Close button */}
         <button
           onClick={handleClose}
-          className="absolute top-4 right-4 p-2 text-muted hover:text-white hover:bg-border/50 rounded-lg transition-colors z-10"
+          className="absolute top-4 right-4 p-2 text-muted hover:text-foreground hover:bg-border/50 rounded-lg transition-colors z-10"
           title="Tutup"
         >
           <X size={18} />
@@ -201,7 +201,7 @@ export function UserGuide() {
           </div>
 
           {/* Title + description */}
-          <h2 className="text-xl font-bold text-white mb-3">{step.title}</h2>
+          <h2 className="text-xl font-bold text-foreground mb-3">{step.title}</h2>
           <p className="text-sm text-muted leading-relaxed mb-4">
             {step.description}
           </p>
@@ -241,14 +241,14 @@ export function UserGuide() {
             {currentStep === 0 ? (
               <button
                 onClick={handleDontShowAgain}
-                className="text-xs text-muted hover:text-white transition-colors whitespace-nowrap"
+                className="text-xs text-muted hover:text-foreground transition-colors whitespace-nowrap"
               >
                 Jangan tampilkan lagi
               </button>
             ) : (
               <button
                 onClick={handleClose}
-                className="text-xs text-muted hover:text-white transition-colors whitespace-nowrap"
+                className="text-xs text-muted hover:text-foreground transition-colors whitespace-nowrap"
               >
                 Lewati
               </button>
@@ -259,7 +259,7 @@ export function UserGuide() {
               {currentStep > 0 && (
                 <button
                   onClick={handlePrev}
-                  className="flex items-center gap-1 px-4 py-2 text-sm text-white border border-border rounded-lg hover:bg-border/50 transition-colors"
+                  className="flex items-center gap-1 px-4 py-2 text-sm text-foreground border border-border rounded-lg hover:bg-border/50 transition-colors"
                 >
                   <ChevronLeft size={16} />
                   Kembali

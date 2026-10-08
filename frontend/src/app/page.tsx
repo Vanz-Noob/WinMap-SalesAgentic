@@ -107,19 +107,19 @@ export default function DashboardPage() {
       {insight && (
         <div className="flex flex-wrap items-center gap-3 p-3 bg-gradient-to-r from-emerald-500/10 to-blue-500/10 border border-emerald-500/20 rounded-xl">
           <div className="flex items-center gap-2">
-            <Activity size={16} className="text-emerald-400" />
+            <Activity size={16} className="text-success" />
             <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-            <span className="text-sm text-white font-medium">Pipeline Status: Healthy</span>
+            <span className="text-sm text-foreground font-medium">Pipeline Status: Healthy</span>
           </div>
           <div className="h-4 w-px bg-border" />
           <span className="text-xs text-muted flex flex-wrap items-center gap-x-3 gap-y-1">
             <span>{insight.summary.open_deals} open deals</span>
             <span className="flex items-center gap-1">
-              <AlertTriangle size={12} className="text-amber-400" />
+              <AlertTriangle size={12} className="text-warning" />
               {insight.summary.at_risk_count} at-risk
             </span>
             <span className="flex items-center gap-1">
-              <Clock size={12} className="text-blue-400" />
+              <Clock size={12} className="text-primary" />
               {insight.summary.deals_closing_this_month} closing soon
             </span>
           </span>
@@ -134,7 +134,7 @@ export default function DashboardPage() {
           value={formatCurrency(totalOpenValue)}
           sublabel={`${totalDeals} deals aktif`}
           gradient="bg-gradient-to-br from-blue-500/10 to-blue-600/5 border-blue-500/20"
-          iconColor="text-blue-400"
+          iconColor="text-primary"
         />
         <GradientStatCard
           icon={TrendingUp}
@@ -142,7 +142,7 @@ export default function DashboardPage() {
           value={formatCurrency(weightedForecast)}
           sublabel="Berdasarkan win probability"
           gradient="bg-gradient-to-br from-teal-500/10 to-teal-600/5 border-teal-500/20"
-          iconColor="text-teal-400"
+          iconColor="text-accent"
         />
         <GradientStatCard
           icon={Target}
@@ -150,7 +150,7 @@ export default function DashboardPage() {
           value={`${Math.round(avgProb * 100)}%`}
           sublabel="Rata-rata seluruh pipeline"
           gradient="bg-gradient-to-br from-amber-500/10 to-amber-600/5 border-amber-500/20"
-          iconColor="text-amber-400"
+          iconColor="text-warning"
         />
         <GradientStatCard
           icon={Layers}
@@ -158,7 +158,7 @@ export default function DashboardPage() {
           value={String(totalDeals)}
           sublabel="Termasuk closed"
           gradient="bg-gradient-to-br from-emerald-500/10 to-emerald-600/5 border-emerald-500/20"
-          iconColor="text-emerald-400"
+          iconColor="text-success"
         />
       </div>
 
@@ -206,7 +206,7 @@ export default function DashboardPage() {
                       <div className="flex items-center gap-2">
                         {si.is_won && <span className="text-xs">✅</span>}
                         {si.is_closed && !si.is_won && <span className="text-xs">❌</span>}
-                        <span className="text-sm font-medium text-white">{si.stage_name}</span>
+                        <span className="text-sm font-medium text-foreground">{si.stage_name}</span>
                         {si.at_risk_count > 0 && (
                           <Badge label={`⚠️ ${si.at_risk_count} at-risk`} color="danger" />
                         )}
@@ -221,7 +221,7 @@ export default function DashboardPage() {
                     </div>
                     <div className="text-right">
                       <p className="text-xs text-muted">Weighted</p>
-                      <p className="text-sm font-semibold text-white">{formatCompact(si.weighted_value)}</p>
+                      <p className="text-sm font-semibold text-foreground">{formatCompact(si.weighted_value)}</p>
                     </div>
                   </div>
                 ))}
@@ -242,7 +242,7 @@ export default function DashboardPage() {
                       className="block p-3 rounded-lg bg-background/50 border border-border hover:border-primary transition-colors"
                     >
                       <div className="flex items-center justify-between gap-2">
-                        <p className="text-sm font-medium text-white truncate flex-1">{d.name}</p>
+                        <p className="text-sm font-medium text-foreground truncate flex-1">{d.name}</p>
                         <span className={cn(
                           "text-xs font-bold shrink-0",
                           d.days_to_close <= 7 ? "text-danger" :
@@ -292,7 +292,7 @@ export default function DashboardPage() {
               {targets.teams.map((team) => (
                 <div key={team.team_name} className="bg-background/50 border border-border rounded-lg p-4">
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm font-medium text-white">{team.team_name}</span>
+                    <span className="text-sm font-medium text-foreground">{team.team_name}</span>
                     <Badge label={`${team.member_count} reps`} color="muted" />
                   </div>
                   <TargetProgressBar
@@ -315,7 +315,7 @@ export default function DashboardPage() {
                   .map((ind) => (
                   <div key={ind.rep_id} className="bg-background/50 border border-border rounded-lg p-3">
                     <div className="flex items-center justify-between mb-1.5">
-                      <span className="text-sm font-medium text-white truncate">{ind.rep_name}</span>
+                      <span className="text-sm font-medium text-foreground truncate">{ind.rep_name}</span>
                       <span className={cn(
                         "text-xs font-bold shrink-0 ml-2",
                         ind.percentage >= 100 ? "text-success" :
@@ -478,16 +478,16 @@ export default function DashboardPage() {
                 <div className="text-4xl">🥇</div>
                 <div className="flex-1">
                   <div className="flex items-center gap-2">
-                    <h4 className="text-lg font-bold text-white">{sotm.winner.rep_name}</h4>
+                    <h4 className="text-lg font-bold text-foreground">{sotm.winner.rep_name}</h4>
                     <Badge label={`Score: ${sotm.winner.composite_score}`} color="warning" />
                   </div>
                   <div className="flex flex-wrap gap-4 mt-2 text-xs text-muted">
-                    <span>✅ Won: <strong className="text-white">{sotm.winner.won_deals}</strong> deals</span>
-                    <span>💰 Revenue: <strong className="text-white">{formatCompact(sotm.winner.won_revenue)}</strong></span>
-                    <span>📊 Win Rate: <strong className="text-white">{sotm.winner.win_rate}%</strong></span>
-                    <span>🎯 Quota: <strong className="text-white">{sotm.winner.quota_attainment}%</strong></span>
-                    <span>🔄 Open: <strong className="text-white">{sotm.winner.open_deals}</strong> deals</span>
-                    <span>📞 Activities: <strong className="text-white">{sotm.winner.activity_count}</strong></span>
+                    <span>✅ Won: <strong className="text-foreground">{sotm.winner.won_deals}</strong> deals</span>
+                    <span>💰 Revenue: <strong className="text-foreground">{formatCompact(sotm.winner.won_revenue)}</strong></span>
+                    <span>📊 Win Rate: <strong className="text-foreground">{sotm.winner.win_rate}%</strong></span>
+                    <span>🎯 Quota: <strong className="text-foreground">{sotm.winner.quota_attainment}%</strong></span>
+                    <span>🔄 Open: <strong className="text-foreground">{sotm.winner.open_deals}</strong> deals</span>
+                    <span>📞 Activities: <strong className="text-foreground">{sotm.winner.activity_count}</strong></span>
                   </div>
                 </div>
               </div>
@@ -514,11 +514,11 @@ export default function DashboardPage() {
                 {sotm.ranking.map((rep) => (
                   <tr key={rep.rep_id} className={`border-b border-border/50 hover:bg-border/20 ${rep.rank === 1 ? "bg-amber-500/5" : ""}`}>
                     <td className="py-2.5 px-2 text-center text-lg">{TROPHY_ICONS[rep.rank - 1] || rep.rank}</td>
-                    <td className="py-2.5 px-2 text-white font-medium">{rep.rep_name}</td>
+                    <td className="py-2.5 px-2 text-foreground font-medium">{rep.rep_name}</td>
                     <td className="py-2.5 px-2 text-center text-success font-semibold">{rep.won_deals}</td>
                     <td className="py-2.5 px-2 text-center text-danger hidden sm:table-cell">{rep.lost_deals}</td>
                     <td className="py-2.5 px-2 text-center text-muted hidden md:table-cell">{rep.open_deals}</td>
-                    <td className="py-2.5 px-2 text-right text-white hidden sm:table-cell">{formatCompact(rep.won_revenue)}</td>
+                    <td className="py-2.5 px-2 text-right text-foreground hidden sm:table-cell">{formatCompact(rep.won_revenue)}</td>
                     <td className="py-2.5 px-2 text-center">
                       <div className="flex items-center justify-center gap-2">
                         <div className="w-12 bg-border rounded-full h-1.5">
@@ -557,8 +557,8 @@ export default function DashboardPage() {
             <tbody>
               {opps.map((opp) => (
                 <tr key={opp.id} className="border-b border-border/50 hover:bg-border/20">
-                  <td className="py-3 px-2 text-white font-medium">{opp.name}</td>
-                  <td className="py-3 px-2 text-right text-white">{formatCurrency(opp.value, opp.currency)}</td>
+                  <td className="py-3 px-2 text-foreground font-medium">{opp.name}</td>
+                  <td className="py-3 px-2 text-right text-foreground">{formatCurrency(opp.value, opp.currency)}</td>
                   <td className="py-3 px-2 text-center">
                     <div className="flex items-center justify-center gap-2">
                       <div className="w-16 bg-border rounded-full h-1.5">
@@ -603,7 +603,7 @@ function GradientStatCard({ icon: Icon, label, value, sublabel, gradient, iconCo
           <Icon size={16} className={iconColor} />
           <p className="text-xs text-muted uppercase tracking-wider">{label}</p>
         </div>
-        <p className="text-2xl font-bold text-white">{value}</p>
+        <p className="text-2xl font-bold text-foreground">{value}</p>
         {sublabel && <p className="text-xs text-muted mt-1">{sublabel}</p>}
       </div>
     </Card>
@@ -615,7 +615,7 @@ function SectionHeader({ title, subtitle }: { title: string; subtitle?: string }
     <div className="flex items-center gap-3 mb-4">
       <div className="h-6 w-1 rounded-full bg-gradient-to-b from-primary to-accent" />
       <div>
-        <h2 className="text-base font-bold text-white">{title}</h2>
+        <h2 className="text-base font-bold text-foreground">{title}</h2>
         {subtitle && <p className="text-xs text-muted mt-0.5">{subtitle}</p>}
       </div>
     </div>
@@ -624,17 +624,17 @@ function SectionHeader({ title, subtitle }: { title: string; subtitle?: string }
 
 function InsightMetric({ label, value, color = "primary" }: { label: string; value: string; color?: string }) {
   const colorMap: Record<string, string> = {
-    primary: "from-blue-500/10 to-transparent border-blue-500/20 text-blue-400",
-    success: "from-emerald-500/10 to-transparent border-emerald-500/20 text-emerald-400",
-    warning: "from-amber-500/10 to-transparent border-amber-500/20 text-amber-400",
-    danger: "from-red-500/10 to-transparent border-red-500/20 text-red-400",
-    accent: "from-teal-500/10 to-transparent border-teal-500/20 text-teal-400",
-    muted: "from-slate-500/10 to-transparent border-slate-500/20 text-slate-400",
+    primary: "from-blue-500/10 to-transparent border-blue-500/20 text-primary",
+    success: "from-emerald-500/10 to-transparent border-emerald-500/20 text-success",
+    warning: "from-amber-500/10 to-transparent border-amber-500/20 text-warning",
+    danger: "from-red-500/10 to-transparent border-red-500/20 text-danger",
+    accent: "from-teal-500/10 to-transparent border-teal-500/20 text-accent",
+    muted: "from-slate-500/10 to-transparent border-slate-500/20 text-muted",
   };
   return (
     <div className={cn("bg-gradient-to-br border rounded-lg p-3 text-center", colorMap[color])}>
       <p className="text-xs text-muted uppercase tracking-wide">{label}</p>
-      <p className="text-lg font-bold mt-1 text-white">{value}</p>
+      <p className="text-lg font-bold mt-1 text-foreground">{value}</p>
     </div>
   );
 }
@@ -664,7 +664,7 @@ function TargetBarCard({ title, target, achieved, pipeline, sublabel }: {
         <div className="grid grid-cols-3 gap-2 mt-4 text-center">
           <div>
             <p className="text-xs text-muted">Target</p>
-            <p className="text-sm font-bold text-white">{formatCompact(target)}</p>
+            <p className="text-sm font-bold text-foreground">{formatCompact(target)}</p>
           </div>
           <div>
             <p className="text-xs text-muted">Achieved</p>

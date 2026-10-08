@@ -66,14 +66,14 @@ export function ConfirmDialog({
             />
           </div>
           <div className="flex-1 pt-0.5">
-            <h3 id="confirm-dialog-title" className="text-base font-semibold text-white">{title}</h3>
+            <h3 id="confirm-dialog-title" className="text-base font-semibold text-foreground">{title}</h3>
             <p className="text-sm text-muted mt-1 leading-relaxed">{message}</p>
           </div>
         </div>
         <div className="flex gap-3 justify-end">
           <button
             onClick={onCancel}
-            className="px-4 py-2 border border-border text-muted hover:text-white hover:bg-border/30 rounded-lg text-sm transition-colors"
+            className="px-4 py-2 border border-border text-muted hover:text-foreground hover:bg-border/30 rounded-lg text-sm transition-colors"
             aria-label={cancelLabel}
           >
             {cancelLabel}

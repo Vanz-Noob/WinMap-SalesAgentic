@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { apiFetch } from "@/lib/api";
+import { useTheme } from "@/lib/theme";
 import type { AnalyticsData, DashboardSummary } from "@/types";
 import { Card, CardHeader, Badge } from "@/components/ui/Card";
 import { formatCurrency, formatCompact, cn } from "@/lib/utils";
@@ -28,20 +29,64 @@ interface ForecastData {
 
 // ── Constants ──────────────────────────────────────────────────────────────
 
-const CHART_COLORS = ["#3b82f6", "#2563eb", "#1d4ed8", "#0d9488", "#059669", "#64748b"];
+const CHART_THEME = {
+  dark: {
+    blue: "#3b82f6",
+    blueDeep: "#2563eb",
+    blueDark: "#1d4ed8",
+    teal: "#0d9488",
+    green: "#059669",
+    slate: "#64748b",
+    yellow: "#eab308",
+    orange: "#f97316",
+    red: "#ef4444",
+    grid: "#334155",
+    axis: "#64748b",
+    areaBg: "#1e293b",
+    tooltipBg: "#1e293b",
+    tooltipBorder: "#334155",
+    tooltipText: "#f8fafc",
+    tooltipLabel: "#64748b",
+    rank1: "#eab308",
+  },
+  light: {
+    blue: "#2563eb",
+    blueDeep: "#1d4ed8",
+    blueDark: "#1e40af",
+    teal: "#0f766e",
+    green: "#047857",
+    slate: "#64748b",
+    yellow: "#a16207",
+    orange: "#c2410c",
+    red: "#dc2626",
+    grid: "#e2e8f0",
+    axis: "#64748b",
+    areaBg: "#ffffff",
+    tooltipBg: "#ffffff",
+    tooltipBorder: "#e2e8f0",
+    tooltipText: "#0f172a",
+    tooltipLabel: "#64748b",
+    rank1: "#a16207",
+  },
+} as const;
 
-const TOOLTIP_STYLE = {
-  background: "#1e293b",
-  border: "1px solid #334155",
+type ChartPalette = Record<keyof (typeof CHART_THEME)["dark"], string>;
+
+const chartColors = (ct: ChartPalette) =>
+  [ct.blue, ct.blueDeep, ct.blueDark, ct.teal, ct.green, ct.slate];
+
+const tooltipStyle = (ct: ChartPalette) => ({
+  background: ct.tooltipBg,
+  border: `1px solid ${ct.tooltipBorder}`,
   borderRadius: "8px",
-  color: "#f8fafc",
+  color: ct.tooltipText,
   fontSize: "12px",
-};
+});
 
-const TOOLTIP_LABEL_STYLE = {
-  color: "#64748b",
+const tooltipLabelStyle = (ct: ChartPalette) => ({
+  color: ct.tooltipLabel,
   marginBottom: "4px",
-};
+});
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -68,11 +113,11 @@ function GradientStat({
   );
 }
 
-function getHealthColor(score: number): string {
-  if (score >= 75) return "#059669";
-  if (score >= 50) return "#eab308";
-  if (score >= 25) return "#f97316";
-  return "#ef4444";
+function getHealthColor(ct: ChartPalette, score: number): string {
+  if (score >= 75) return ct.green;
+  if (score >= 50) return ct.yellow;
+  if (score >= 25) return ct.orange;
+  return ct.red;
 }
 
 function getHealthStatus(score: number): string {
@@ -82,12 +127,12 @@ function getHealthStatus(score: number): string {
   return "Critical";
 }
 
-function getAgingColor(bucket: string): string {
+function getAgingColor(ct: ChartPalette, bucket: string): string {
   const b = bucket.toLowerCase();
-  if (b.includes("0") && (b.includes("30") || b.includes("7"))) return "#059669";
-  if (b.includes("31") || b.includes("60")) return "#eab308";
-  if (b.includes("61") || b.includes("90")) return "#f97316";
-  return "#ef4444";
+  if (b.includes("0") && (b.includes("30") || b.includes("7"))) return ct.green;
+  if (b.includes("31") || b.includes("60")) return ct.yellow;
+  if (b.includes("61") || b.includes("90")) return ct.orange;
+  return ct.red;
 }
 
 function formatMonth(m: string): string {
@@ -104,6 +149,9 @@ function formatMonth(m: string): string {
 // ── Main Component ─────────────────────────────────────────────────────────
 
 export default function AnalyticsPage() {
+  const { theme } = useTheme();
+  const ct = CHART_THEME[theme];
+  const cc = chartColors(ct);
   const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
   const [summary, setSummary] = useState<DashboardSummary[]>([]);
   const [forecast, setForecast] = useState<ForecastData[]>([]);
@@ -150,7 +198,7 @@ export default function AnalyticsPage() {
   const totalLost = winLoss?.total_lost ?? 0;
   const avgDealSize = totalWon > 0 ? wonRevenue / totalWon : 0;
   const healthScore = pipelineHealth?.score ?? 0;
-  const healthColor = getHealthColor(healthScore);
+  const healthColor = getHealthColor(ct, healthScore);
   const healthStatus = getHealthStatus(healthScore);
 
   // Revenue trend
@@ -283,14 +331,14 @@ export default function AnalyticsPage() {
                   endAngle={-270}
                 >
                   <RadialBar
-                    background={{ fill: "#1e293b" }}
+                    background={{ fill: ct.areaBg }}
                     dataKey="value"
                     cornerRadius={12}
                   />
                 </RadialBarChart>
               </ResponsiveContainer>
               <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                <span className="text-4xl font-bold text-white">{healthScore}</span>
+                <span className="text-4xl font-bold text-foreground">{healthScore}</span>
                 <span className="text-xs text-muted">dari 100</span>
                 <span className="text-xs mt-1 font-medium" style={{ color: healthColor }}>
                   {healthStatus}
@@ -337,22 +385,22 @@ export default function AnalyticsPage() {
             <AreaChart data={revenueTrendData}>
               <defs>
                 <linearGradient id="revenueGradient" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#3b82f6" stopOpacity={0.4} />
-                  <stop offset="100%" stopColor="#3b82f6" stopOpacity={0} />
+                  <stop offset="0%" stopColor={ct.blue} stopOpacity={0.4} />
+                  <stop offset="100%" stopColor={ct.blue} stopOpacity={0} />
                 </linearGradient>
               </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="#334155" vertical={false} />
-              <XAxis dataKey="month" stroke="#64748b" fontSize={11} />
-              <YAxis stroke="#64748b" fontSize={11} tickFormatter={(v) => formatCompact(v)} />
+              <CartesianGrid strokeDasharray="3 3" stroke={ct.grid} vertical={false} />
+              <XAxis dataKey="month" stroke={ct.axis} fontSize={11} />
+              <YAxis stroke={ct.axis} fontSize={11} tickFormatter={(v) => formatCompact(v)} />
               <Tooltip
-                contentStyle={TOOLTIP_STYLE}
-                labelStyle={TOOLTIP_LABEL_STYLE}
+                contentStyle={tooltipStyle(ct)}
+                labelStyle={tooltipLabelStyle(ct)}
                 formatter={(value: number) => [formatCurrency(value), "Revenue"]}
               />
               <Area
                 type="monotone"
                 dataKey="revenue"
-                stroke="#3b82f6"
+                stroke={ct.blue}
                 strokeWidth={2}
                 fill="url(#revenueGradient)"
               />
@@ -368,19 +416,19 @@ export default function AnalyticsPage() {
           />
           <ResponsiveContainer width="100%" height={300}>
             <BarChart layout="vertical" data={funnelData} margin={{ left: 10, right: 40 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#334155" horizontal={false} />
-              <XAxis type="number" stroke="#64748b" fontSize={11} tickFormatter={(v) => formatCompact(v)} />
-              <YAxis type="category" dataKey="name" stroke="#64748b" fontSize={11} width={110} />
+              <CartesianGrid strokeDasharray="3 3" stroke={ct.grid} horizontal={false} />
+              <XAxis type="number" stroke={ct.axis} fontSize={11} tickFormatter={(v) => formatCompact(v)} />
+              <YAxis type="category" dataKey="name" stroke={ct.axis} fontSize={11} width={110} />
               <Tooltip
-                contentStyle={TOOLTIP_STYLE}
-                labelStyle={TOOLTIP_LABEL_STYLE}
+                contentStyle={tooltipStyle(ct)}
+                labelStyle={tooltipLabelStyle(ct)}
                 formatter={(value: number, _name: string, item: { payload?: { conversion_rate?: number; total_value?: number } }) => {
                   const cr = item?.payload?.conversion_rate ?? 0;
                   const tv = item?.payload?.total_value ?? 0;
                   return [`${value} deals (${cr.toFixed(1)}%) | ${formatCompact(tv)}`, "Stage"];
                 }}
               />
-              <Bar dataKey="deal_count" fill="#3b82f6" radius={[0, 4, 4, 0]} />
+              <Bar dataKey="deal_count" fill={ct.blue} radius={[0, 4, 4, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </Card>
@@ -398,30 +446,30 @@ export default function AnalyticsPage() {
                 <Clock size={16} className="text-primary" />
                 <p className="text-xs text-muted">Avg Days to Close</p>
               </div>
-              <p className="text-xl font-bold text-white mt-1">{dealVelocity?.avg_days_to_close ?? 0} hari</p>
+              <p className="text-xl font-bold text-foreground mt-1">{dealVelocity?.avg_days_to_close ?? 0} hari</p>
             </div>
             <div className="bg-background border border-border rounded-lg p-3">
               <div className="flex items-center gap-2">
                 <Activity size={16} className="text-warning" />
                 <p className="text-xs text-muted">Avg Open Deal Age</p>
               </div>
-              <p className="text-xl font-bold text-white mt-1">{dealVelocity?.avg_open_deal_age ?? 0} hari</p>
+              <p className="text-xl font-bold text-foreground mt-1">{dealVelocity?.avg_open_deal_age ?? 0} hari</p>
             </div>
           </div>
           <ResponsiveContainer width="100%" height={220}>
             <BarChart data={velocityByStage}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#334155" vertical={false} />
-              <XAxis dataKey="stage" stroke="#64748b" fontSize={10} angle={-20} textAnchor="end" height={60} />
-              <YAxis stroke="#64748b" fontSize={11} tickFormatter={(v) => `${v}h`} />
+              <CartesianGrid strokeDasharray="3 3" stroke={ct.grid} vertical={false} />
+              <XAxis dataKey="stage" stroke={ct.axis} fontSize={10} angle={-20} textAnchor="end" height={60} />
+              <YAxis stroke={ct.axis} fontSize={11} tickFormatter={(v) => `${v}h`} />
               <Tooltip
-                contentStyle={TOOLTIP_STYLE}
-                labelStyle={TOOLTIP_LABEL_STYLE}
+                contentStyle={tooltipStyle(ct)}
+                labelStyle={tooltipLabelStyle(ct)}
                 formatter={(value: number, _name: string, item: { payload?: { deal_count?: number } }) => {
                   const dc = item?.payload?.deal_count ?? 0;
                   return [`${value} hari (${dc} deals)`, "Avg Days"];
                 }}
               />
-              <Bar dataKey="avg_days" fill="#0d9488" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="avg_days" fill={ct.teal} radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </Card>
@@ -455,16 +503,16 @@ export default function AnalyticsPage() {
           </div>
           <ResponsiveContainer width="100%" height={220}>
             <BarChart data={winLossByMonth}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#334155" vertical={false} />
-              <XAxis dataKey="month" stroke="#64748b" fontSize={11} />
-              <YAxis stroke="#64748b" fontSize={11} />
+              <CartesianGrid strokeDasharray="3 3" stroke={ct.grid} vertical={false} />
+              <XAxis dataKey="month" stroke={ct.axis} fontSize={11} />
+              <YAxis stroke={ct.axis} fontSize={11} />
               <Tooltip
-                contentStyle={TOOLTIP_STYLE}
-                labelStyle={TOOLTIP_LABEL_STYLE}
+                contentStyle={tooltipStyle(ct)}
+                labelStyle={tooltipLabelStyle(ct)}
               />
               <Legend wrapperStyle={{ fontSize: "12px" }} />
-              <Bar dataKey="won" stackId="a" fill="#059669" name="Won" />
-              <Bar dataKey="lost" stackId="a" fill="#ef4444" name="Lost" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="won" stackId="a" fill={ct.green} name="Won" />
+              <Bar dataKey="lost" stackId="a" fill={ct.red} name="Lost" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </Card>
@@ -480,17 +528,17 @@ export default function AnalyticsPage() {
         {/* Score bar chart */}
         <ResponsiveContainer width="100%" height={repChartHeight}>
           <BarChart layout="vertical" data={sortedReps} margin={{ left: 10, right: 40 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#334155" horizontal={false} />
-            <XAxis type="number" stroke="#64748b" fontSize={11} domain={[0, 100]} />
-            <YAxis type="category" dataKey="rep_name" stroke="#64748b" fontSize={11} width={110} />
+            <CartesianGrid strokeDasharray="3 3" stroke={ct.grid} horizontal={false} />
+            <XAxis type="number" stroke={ct.axis} fontSize={11} domain={[0, 100]} />
+            <YAxis type="category" dataKey="rep_name" stroke={ct.axis} fontSize={11} width={110} />
             <Tooltip
-              contentStyle={TOOLTIP_STYLE}
-              labelStyle={TOOLTIP_LABEL_STYLE}
+              contentStyle={tooltipStyle(ct)}
+              labelStyle={tooltipLabelStyle(ct)}
               formatter={(value: number) => [value.toFixed(1), "Score"]}
             />
             <Bar dataKey="score" radius={[0, 4, 4, 0]}>
               {sortedReps.map((_rep, idx) => (
-                <Cell key={idx} fill={idx === 0 ? "#eab308" : CHART_COLORS[idx % CHART_COLORS.length]} />
+                <Cell key={idx} fill={idx === 0 ? "#eab308" : cc[idx % cc.length]} />
               ))}
             </Bar>
           </BarChart>
@@ -531,19 +579,19 @@ export default function AnalyticsPage() {
                       <span className="text-muted">{idx + 1}</span>
                     )}
                   </td>
-                  <td className="py-3 px-3 text-white font-medium">
+                  <td className="py-3 px-3 text-foreground font-medium">
                     {rep.rep_name}
                     {idx === 0 && <span className="ml-2 text-xs text-warning">Top Performer</span>}
                   </td>
-                  <td className="py-3 px-3 text-center text-white">{rep.total_deals}</td>
+                  <td className="py-3 px-3 text-center text-foreground">{rep.total_deals}</td>
                   <td className="py-3 px-3 text-center text-success">{rep.won_deals}</td>
                   <td className="py-3 px-3 text-center text-danger">{rep.lost_deals}</td>
                   <td className="py-3 px-3 text-center text-primary">{rep.open_deals}</td>
-                  <td className="py-3 px-3 text-right text-white">{formatCurrency(rep.won_revenue)}</td>
-                  <td className="py-3 px-3 text-center text-white">{rep.win_rate.toFixed(1)}%</td>
-                  <td className="py-3 px-3 text-center text-white">{rep.quota_attainment.toFixed(1)}%</td>
+                  <td className="py-3 px-3 text-right text-foreground">{formatCurrency(rep.won_revenue)}</td>
+                  <td className="py-3 px-3 text-center text-foreground">{rep.win_rate.toFixed(1)}%</td>
+                  <td className="py-3 px-3 text-center text-foreground">{rep.quota_attainment.toFixed(1)}%</td>
                   <td className="py-3 px-3 text-center">
-                    <span className={cn("font-bold", idx === 0 ? "text-warning" : "text-white")}>
+                    <span className={cn("font-bold", idx === 0 ? "text-warning" : "text-foreground")}>
                       {rep.score.toFixed(1)}
                     </span>
                   </td>
@@ -568,18 +616,18 @@ export default function AnalyticsPage() {
           <CardHeader title="📦 Deal Size Distribution" subtitle="Distribusi deal berdasarkan range nilai" />
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={dealSizeData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#334155" vertical={false} />
-              <XAxis dataKey="range" stroke="#64748b" fontSize={10} angle={-15} textAnchor="end" height={60} />
-              <YAxis stroke="#64748b" fontSize={11} />
+              <CartesianGrid strokeDasharray="3 3" stroke={ct.grid} vertical={false} />
+              <XAxis dataKey="range" stroke={ct.axis} fontSize={10} angle={-15} textAnchor="end" height={60} />
+              <YAxis stroke={ct.axis} fontSize={11} />
               <Tooltip
-                contentStyle={TOOLTIP_STYLE}
-                labelStyle={TOOLTIP_LABEL_STYLE}
+                contentStyle={tooltipStyle(ct)}
+                labelStyle={tooltipLabelStyle(ct)}
                 formatter={(value: number, _name: string, item: { payload?: { total_value?: number } }) => {
                   const tv = item?.payload?.total_value ?? 0;
                   return [`${value} deals | ${formatCompact(tv)}`, "Range"];
                 }}
               />
-              <Bar dataKey="count" fill="#2563eb" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="count" fill={ct.blueDeep} radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </Card>
@@ -592,12 +640,12 @@ export default function AnalyticsPage() {
             <div className="bg-primary/5 border border-primary/20 rounded-lg p-3">
               <div className="flex items-center gap-2 mb-2">
                 <Zap size={16} className="text-primary" />
-                <span className="text-sm font-semibold text-white">AI Agent</span>
+                <span className="text-sm font-semibold text-foreground">AI Agent</span>
               </div>
               <div className="space-y-1.5">
                 <div className="flex justify-between text-xs">
                   <span className="text-muted">Deals</span>
-                  <span className="text-white font-medium">{aiPerf?.count ?? 0}</span>
+                  <span className="text-foreground font-medium">{aiPerf?.count ?? 0}</span>
                 </div>
                 <div className="flex justify-between text-xs">
                   <span className="text-muted">Won</span>
@@ -609,11 +657,11 @@ export default function AnalyticsPage() {
                 </div>
                 <div className="flex justify-between text-xs">
                   <span className="text-muted">Avg Value</span>
-                  <span className="text-white font-medium">{formatCompact(aiPerf?.avg_value ?? 0)}</span>
+                  <span className="text-foreground font-medium">{formatCompact(aiPerf?.avg_value ?? 0)}</span>
                 </div>
                 <div className="flex justify-between text-xs">
                   <span className="text-muted">Total</span>
-                  <span className="text-white font-medium">{formatCompact(aiPerf?.value ?? 0)}</span>
+                  <span className="text-foreground font-medium">{formatCompact(aiPerf?.value ?? 0)}</span>
                 </div>
               </div>
             </div>
@@ -622,12 +670,12 @@ export default function AnalyticsPage() {
             <div className="bg-muted/5 border border-muted/20 rounded-lg p-3">
               <div className="flex items-center gap-2 mb-2">
                 <Users size={16} className="text-muted" />
-                <span className="text-sm font-semibold text-white">Manual</span>
+                <span className="text-sm font-semibold text-foreground">Manual</span>
               </div>
               <div className="space-y-1.5">
                 <div className="flex justify-between text-xs">
                   <span className="text-muted">Deals</span>
-                  <span className="text-white font-medium">{manualPerf?.count ?? 0}</span>
+                  <span className="text-foreground font-medium">{manualPerf?.count ?? 0}</span>
                 </div>
                 <div className="flex justify-between text-xs">
                   <span className="text-muted">Won</span>
@@ -635,15 +683,15 @@ export default function AnalyticsPage() {
                 </div>
                 <div className="flex justify-between text-xs">
                   <span className="text-muted">Win Rate</span>
-                  <span className="text-white font-medium">{(manualPerf?.win_rate ?? 0).toFixed(1)}%</span>
+                  <span className="text-foreground font-medium">{(manualPerf?.win_rate ?? 0).toFixed(1)}%</span>
                 </div>
                 <div className="flex justify-between text-xs">
                   <span className="text-muted">Avg Value</span>
-                  <span className="text-white font-medium">{formatCompact(manualPerf?.avg_value ?? 0)}</span>
+                  <span className="text-foreground font-medium">{formatCompact(manualPerf?.avg_value ?? 0)}</span>
                 </div>
                 <div className="flex justify-between text-xs">
                   <span className="text-muted">Total</span>
-                  <span className="text-white font-medium">{formatCompact(manualPerf?.value ?? 0)}</span>
+                  <span className="text-foreground font-medium">{formatCompact(manualPerf?.value ?? 0)}</span>
                 </div>
               </div>
             </div>
@@ -655,17 +703,17 @@ export default function AnalyticsPage() {
               { name: "AI Agent", winRate: aiPerf?.win_rate ?? 0 },
               { name: "Manual", winRate: manualPerf?.win_rate ?? 0 },
             ]}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#334155" vertical={false} />
-              <XAxis dataKey="name" stroke="#64748b" fontSize={11} />
-              <YAxis stroke="#64748b" fontSize={10} tickFormatter={(v) => `${v}%`} domain={[0, 100]} />
+              <CartesianGrid strokeDasharray="3 3" stroke={ct.grid} vertical={false} />
+              <XAxis dataKey="name" stroke={ct.axis} fontSize={11} />
+              <YAxis stroke={ct.axis} fontSize={10} tickFormatter={(v) => `${v}%`} domain={[0, 100]} />
               <Tooltip
-                contentStyle={TOOLTIP_STYLE}
-                labelStyle={TOOLTIP_LABEL_STYLE}
+                contentStyle={tooltipStyle(ct)}
+                labelStyle={tooltipLabelStyle(ct)}
                 formatter={(value: number) => [`${value.toFixed(1)}%`, "Win Rate"]}
               />
               <Bar dataKey="winRate" radius={[4, 4, 0, 0]}>
-                <Cell fill="#3b82f6" />
-                <Cell fill="#64748b" />
+                <Cell fill={ct.blue} />
+                <Cell fill={ct.slate} />
               </Bar>
             </BarChart>
           </ResponsiveContainer>
@@ -692,12 +740,12 @@ export default function AnalyticsPage() {
                     paddingAngle={2}
                   >
                     {industryPieData.map((_entry, idx) => (
-                      <Cell key={idx} fill={CHART_COLORS[idx % CHART_COLORS.length]} />
+                      <Cell key={idx} fill={cc[idx % cc.length]} />
                     ))}
                   </Pie>
                   <Tooltip
-                    contentStyle={TOOLTIP_STYLE}
-                    labelStyle={TOOLTIP_LABEL_STYLE}
+                    contentStyle={tooltipStyle(ct)}
+                    labelStyle={tooltipLabelStyle(ct)}
                     formatter={(value: number) => [formatCurrency(value), "Total Value"]}
                   />
                 </PieChart>
@@ -717,7 +765,7 @@ export default function AnalyticsPage() {
                 <tbody>
                   {industryData.map((item, idx) => (
                     <tr key={idx} className="border-b border-border/50">
-                      <td className="py-2 px-2 text-white">{item.industry}</td>
+                      <td className="py-2 px-2 text-foreground">{item.industry}</td>
                       <td className="py-2 px-2 text-center text-muted">{item.deal_count}</td>
                       <td className="py-2 px-2 text-right text-muted">{formatCompact(item.total_value)}</td>
                       <td className="py-2 px-2 text-right text-success">{formatCompact(item.won_value)}</td>
@@ -739,12 +787,12 @@ export default function AnalyticsPage() {
           <CardHeader title="⏰ Aging Analysis" subtitle="Distribusi deal berdasarkan umur" />
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={agingData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#334155" vertical={false} />
-              <XAxis dataKey="bucket" stroke="#64748b" fontSize={11} />
-              <YAxis stroke="#64748b" fontSize={11} />
+              <CartesianGrid strokeDasharray="3 3" stroke={ct.grid} vertical={false} />
+              <XAxis dataKey="bucket" stroke={ct.axis} fontSize={11} />
+              <YAxis stroke={ct.axis} fontSize={11} />
               <Tooltip
-                contentStyle={TOOLTIP_STYLE}
-                labelStyle={TOOLTIP_LABEL_STYLE}
+                contentStyle={tooltipStyle(ct)}
+                labelStyle={tooltipLabelStyle(ct)}
                 formatter={(value: number, _name: string, item: { payload?: { total_value?: number } }) => {
                   const tv = item?.payload?.total_value ?? 0;
                   return [`${value} deals | ${formatCompact(tv)}`, "Bucket"];
@@ -752,7 +800,7 @@ export default function AnalyticsPage() {
               />
               <Bar dataKey="count" radius={[4, 4, 0, 0]}>
                 {agingData.map((entry, idx) => (
-                  <Cell key={idx} fill={getAgingColor(entry.bucket)} />
+                  <Cell key={idx} fill={getAgingColor(ct, entry.bucket)} />
                 ))}
               </Bar>
             </BarChart>
@@ -781,17 +829,17 @@ export default function AnalyticsPage() {
         </div>
         <ResponsiveContainer width="100%" height={300}>
           <LineChart data={forecastData}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
-            <XAxis dataKey="month" stroke="#64748b" fontSize={11} />
-            <YAxis stroke="#64748b" fontSize={11} tickFormatter={(v) => formatCompact(v)} />
+            <CartesianGrid strokeDasharray="3 3" stroke={ct.grid} />
+            <XAxis dataKey="month" stroke={ct.axis} fontSize={11} />
+            <YAxis stroke={ct.axis} fontSize={11} tickFormatter={(v) => formatCompact(v)} />
             <Tooltip
-              contentStyle={TOOLTIP_STYLE}
-              labelStyle={TOOLTIP_LABEL_STYLE}
+              contentStyle={tooltipStyle(ct)}
+              labelStyle={tooltipLabelStyle(ct)}
               formatter={(value: number) => formatCurrency(value)}
             />
             <Legend wrapperStyle={{ fontSize: "12px" }} />
-            <Line type="monotone" dataKey="weighted" stroke="#0d9488" strokeWidth={2} name="Weighted" dot={{ r: 4 }} />
-            <Line type="monotone" dataKey="unweighted" stroke="#3b82f6" strokeWidth={2} name="Unweighted" dot={{ r: 4 }} strokeDasharray="5 5" />
+            <Line type="monotone" dataKey="weighted" stroke={ct.teal} strokeWidth={2} name="Weighted" dot={{ r: 4 }} />
+            <Line type="monotone" dataKey="unweighted" stroke={ct.blue} strokeWidth={2} name="Unweighted" dot={{ r: 4 }} strokeDasharray="5 5" />
           </LineChart>
         </ResponsiveContainer>
       </Card>
@@ -813,13 +861,13 @@ export default function AnalyticsPage() {
               value={tableauUrl}
               onChange={(e) => setTableauUrl(e.target.value)}
               placeholder="https://your-tableau-server.com/views/SalesDashboard/Dashboard1"
-              className="flex-1 bg-background border border-border rounded-lg px-4 py-2 text-white placeholder-muted text-sm focus:outline-none focus:border-primary"
+              className="flex-1 bg-background border border-border rounded-lg px-4 py-2 text-foreground placeholder-muted text-sm focus:outline-none focus:border-primary"
             />
             <a
               href={tableauUrl || "#"}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-1.5 border border-border text-muted hover:text-white px-3 py-2 rounded-lg text-sm transition-colors"
+              className="flex items-center gap-1.5 border border-border text-muted hover:text-foreground px-3 py-2 rounded-lg text-sm transition-colors"
             >
               <ExternalLink size={14} />
               Open
@@ -874,9 +922,9 @@ export default function AnalyticsPage() {
             <tbody>
               {summary.map((s) => (
                 <tr key={s.stage_name} className="border-b border-border/50 hover:bg-border/20">
-                  <td className="py-3 px-3 text-white font-medium">{s.stage_name}</td>
-                  <td className="py-3 px-3 text-center text-white">{s.deal_count}</td>
-                  <td className="py-3 px-3 text-right text-white">{formatCurrency(s.total_value)}</td>
+                  <td className="py-3 px-3 text-foreground font-medium">{s.stage_name}</td>
+                  <td className="py-3 px-3 text-center text-foreground">{s.deal_count}</td>
+                  <td className="py-3 px-3 text-right text-foreground">{formatCurrency(s.total_value)}</td>
                   <td className="py-3 px-3 text-center text-muted">{Math.round(s.avg_probability * 100)}%</td>
                   <td className="py-3 px-3 text-center">
                     {s.stage_name === "Closed Won" ? (

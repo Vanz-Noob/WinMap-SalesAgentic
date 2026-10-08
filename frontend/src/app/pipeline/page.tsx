@@ -113,7 +113,7 @@ export default function PipelinePage() {
               <select
                 value={selectedRep}
                 onChange={(e) => setSelectedRep(e.target.value)}
-                className="bg-card border border-border rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-primary cursor-pointer min-w-[180px]"
+                className="bg-card border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary cursor-pointer min-w-[180px]"
               >
                 <option value="all">📊 Semua Sales Rep</option>
                 {users.map((u) => (
@@ -153,7 +153,7 @@ export default function PipelinePage() {
                   <div className="flex items-center gap-2">
                     {stage.is_won && <span>✅</span>}
                     {stage.is_closed && !stage.is_won && <span>❌</span>}
-                    <h3 className="text-sm font-semibold text-white">{stage.name}</h3>
+                    <h3 className="text-sm font-semibold text-foreground">{stage.name}</h3>
                   </div>
                   <span className="text-xs text-muted bg-border px-2 py-0.5 rounded-full">
                     {stageOpps.length}
@@ -185,7 +185,7 @@ export default function PipelinePage() {
                         draggedId === opp.id && "opacity-50"
                       )}
                     >
-                      <p className="text-sm font-medium text-white mb-1 line-clamp-2 hover:text-primary">{opp.name}</p>
+                      <p className="text-sm font-medium text-foreground mb-1 line-clamp-2 hover:text-primary">{opp.name}</p>
                       <div className="flex items-center justify-between mt-2">
                         <span className="text-xs text-muted">{formatCompact(opp.value)}</span>
                         <Badge label={`${Math.round(opp.win_probability * 100)}%`} color={opp.win_probability >= 0.7 ? "success" : opp.win_probability >= 0.4 ? "warning" : "danger"} />

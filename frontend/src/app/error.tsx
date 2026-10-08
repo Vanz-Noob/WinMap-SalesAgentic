@@ -9,7 +9,7 @@ export default function Error({
 }) {
   return (
     <div className="flex flex-col items-center justify-center h-full gap-4 p-8">
-      <h2 className="text-xl font-bold text-white">Terjadi Kesalahan</h2>
+      <h2 className="text-xl font-bold text-foreground">Terjadi Kesalahan</h2>
       <p className="text-sm text-muted text-center max-w-md">
         Maaf, terjadi error saat memuat halaman. Silakan coba lagi.
       </p>

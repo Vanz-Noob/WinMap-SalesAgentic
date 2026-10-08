@@ -81,7 +81,7 @@ export default function NewOpportunityPage() {
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
-      <Link href="/opportunities" className="flex items-center gap-2 text-muted hover:text-white text-sm">
+      <Link href="/opportunities" className="flex items-center gap-2 text-muted hover:text-foreground text-sm">
         <ArrowLeft size={16} />
         Kembali ke Opportunities
       </Link>
@@ -102,7 +102,7 @@ export default function NewOpportunityPage() {
               value={form.name}
               onChange={(e) => setForm({ ...form, name: e.target.value })}
               placeholder="contoh: PT Maju Jaya - CRM System"
-              className="w-full bg-background border border-border rounded-lg px-4 py-2.5 text-white placeholder-muted focus:outline-none focus:border-primary"
+              className="w-full bg-background border border-border rounded-lg px-4 py-2.5 text-foreground placeholder-muted focus:outline-none focus:border-primary"
             />
           </div>
           <div className="grid grid-cols-2 gap-4">
@@ -115,7 +115,7 @@ export default function NewOpportunityPage() {
                 value={form.value}
                 onChange={(e) => setForm({ ...form, value: e.target.value })}
                 placeholder="500000000"
-                className="w-full bg-background border border-border rounded-lg px-4 py-2.5 text-white placeholder-muted focus:outline-none focus:border-primary"
+                className="w-full bg-background border border-border rounded-lg px-4 py-2.5 text-foreground placeholder-muted focus:outline-none focus:border-primary"
               />
               <p className="text-xs text-muted/60 mt-1">Estimasi nilai deal dalam mata uang yang dipilih</p>
             </div>
@@ -124,7 +124,7 @@ export default function NewOpportunityPage() {
               <select
                 value={form.currency}
                 onChange={(e) => setForm({ ...form, currency: e.target.value })}
-                className="w-full bg-background border border-border rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-primary"
+                className="w-full bg-background border border-border rounded-lg px-4 py-2.5 text-foreground focus:outline-none focus:border-primary"
               >
                 <option value="IDR">IDR</option>
                 <option value="USD">USD</option>
@@ -138,7 +138,7 @@ export default function NewOpportunityPage() {
               <select
                 value={form.stage_id}
                 onChange={(e) => setForm({ ...form, stage_id: e.target.value })}
-                className="w-full bg-background border border-border rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-primary"
+                className="w-full bg-background border border-border rounded-lg px-4 py-2.5 text-foreground focus:outline-none focus:border-primary"
               >
                 {stages.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
               </select>
@@ -149,7 +149,7 @@ export default function NewOpportunityPage() {
                 type="date"
                 value={form.close_date}
                 onChange={(e) => setForm({ ...form, close_date: e.target.value })}
-                className="w-full bg-background border border-border rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-primary"
+                className="w-full bg-background border border-border rounded-lg px-4 py-2.5 text-foreground focus:outline-none focus:border-primary"
               />
               <p className="text-xs text-muted/60 mt-1">Estimasi tanggal deal akan ditutup</p>
             </div>
@@ -160,7 +160,7 @@ export default function NewOpportunityPage() {
               <select
                 value={form.owner_id}
                 onChange={(e) => setForm({ ...form, owner_id: e.target.value })}
-                className="w-full bg-background border border-border rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-primary"
+                className="w-full bg-background border border-border rounded-lg px-4 py-2.5 text-foreground focus:outline-none focus:border-primary"
               >
                 <option value="">— Pilih Sales Rep —</option>
                 {users.filter((u) => u.role === "sales_rep" || u.role === "sales_manager").length === 0 ? (
@@ -178,7 +178,7 @@ export default function NewOpportunityPage() {
                 required
                 value={form.presales_id}
                 onChange={(e) => setForm({ ...form, presales_id: e.target.value })}
-                className="w-full bg-background border border-border rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-primary"
+                className="w-full bg-background border border-border rounded-lg px-4 py-2.5 text-foreground focus:outline-none focus:border-primary"
               >
                 <option value="">— Pilih Presales —</option>
                 {users.filter((u) => u.role === "presales").map((u) => (
@@ -192,7 +192,7 @@ export default function NewOpportunityPage() {
             <select
               value={form.source}
               onChange={(e) => setForm({ ...form, source: e.target.value })}
-              className="w-full bg-background border border-border rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-primary"
+              className="w-full bg-background border border-border rounded-lg px-4 py-2.5 text-foreground focus:outline-none focus:border-primary"
             >
               <option value="manual">Manual</option>
               <option value="inbound">Inbound</option>
@@ -210,7 +210,7 @@ export default function NewOpportunityPage() {
             </button>
             <Link
               href="/opportunities"
-              className="px-6 py-2.5 border border-border text-muted hover:text-white rounded-lg transition-colors"
+              className="px-6 py-2.5 border border-border text-muted hover:text-foreground rounded-lg transition-colors"
             >
               Batal
             </Link>
