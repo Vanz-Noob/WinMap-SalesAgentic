@@ -19,11 +19,13 @@
 6. [Struktur Proyek](#6-struktur-proyek)
 7. [Backend API](#7-backend-api)
 8. [AI Agents](#8-ai-agents)
-9. [Frontend](#9-frontend)
-10. [Tableau Dashboard](#10-tableau-dashboard)
-11. [Deployment](#11-deployment)
-12. [Testing](#12-testing)
-13. [Troubleshooting](#13-troubleshooting)
+9. [Authentication & RBAC](#9-authentication--rbac)
+10. [Presales Features](#10-presales-features)
+11. [Frontend](#11-frontend)
+12. [Tableau Dashboard](#12-tableau-dashboard)
+13. [Deployment](#13-deployment)
+14. [Testing](#14-testing)
+15. [Troubleshooting](#15-troubleshooting)
 
 ---
 
@@ -47,6 +49,13 @@ RenRND Sales Agentic AI adalah platform berbasis AI agen yang mengotomatisasi se
 | Dashboard Real-Time | Visualisasi funnel, forecast, dan rep performance |
 | Tableau Integration | Embed Tableau workbook untuk analitik advanced |
 | Background Tasks | Celery menjalankan pipeline scan (per jam) & briefing (per hari) |
+| Authentication & RBAC | Login JWT httpOnly cookie, 4 role: superadmin, presales, sales_rep, sales_manager |
+| Presales KPI | Kelola KPI tim presales per kategori dengan tracking target & pencapaian |
+| Presales Work Tracking | Lacak pekerjaan presales: BOM, Proposal Teknis, Proposal RFP, Proposal Lainnya, POC — sampai Close Won/Lost |
+| Admin Panel | Manajemen user, role assignment, & konfigurasi sistem |
+| Light/Dark Mode | Toggle tema terang/gelap dengan persistensi preferensi user |
+| Auto Migration | Database schema migration otomatis saat backend start (idempotent) |
+| Deploy Scripts | `start.sh` & `stop.sh` dengan apparmor workaround (force-kill PID) |
 
 ---
 
@@ -270,6 +279,8 @@ renrnd-sales-agentic/
 ├── .env.production               # Environment template (prod)
 ├── .dockerignore                 # Root dockerignore
 ├── .gitignore
+├── start.sh                      # Script start production (dengan apparmor workaround)
+├── stop.sh                       # Script stop production (dengan apparmor workaround)
 ├── README.md                     # Dokumentasi ini
 ├── RENCANA_APLIKASI_AGENTIC_AI_SALES.md  # Rencana lengkap
 ├── RenRND_Sales_Agentic_AI_PitchDeck.pptx # Pitch deck
@@ -292,7 +303,7 @@ renrnd-sales-agentic/
 │   │   └── test_e2e.py           # E2E test (9 skenario)
 │   └── app/
 │       ├── __init__.py
-│       ├── main.py              # FastAPI entry point
+│       ├── main.py              # FastAPI entry point + router registration
 │       ├── config.py            # Konfigurasi (Pydantic Settings)
 │       ├── llm_client.py        # BytePlus ModelArk LLM client
 │       ├── celery_app.py        # Celery background tasks
@@ -301,10 +312,11 @@ renrnd-sales-agentic/
 │       │   ├── __init__.py
 │       │   ├── database.py      # Async engine & session
 │       │   ├── init.sql         # Schema SQL (auto-run on first start)
+│       │   ├── migrate.py       # Idempotent migration script (auto-run on backend start)
 │       │   └── seed.py          # Seed data script
 │       │
 │       ├── models/
-│       │   └── __init__.py      # 8 SQLAlchemy ORM models
+│       │   └── __init__.py      # SQLAlchemy ORM models (User, Account, Contact, Opportunity, Stage, Activity, Task, AgentLog, PresalesKpi, PresalesWork)
 │       │
 │       ├── schemas/
 │       │   ├── __init__.py
@@ -315,13 +327,17 @@ renrnd-sales-agentic/
 │       │   ├── __init__.py
 │       │   └── v1/
 │       │       ├── __init__.py
-│       │       ├── opportunities.py  # CRUD opportunities
+│       │       ├── auth.py             # Login, register, logout, current user
+│       │       ├── admin.py            # User management (superadmin only)
+│       │       ├── opportunities.py    # CRUD opportunities
 │       │       ├── stages.py          # List stages
 │       │       ├── activities.py      # CRUD activities
 │       │       ├── tasks.py           # CRUD tasks
 │       │       ├── accounts.py        # CRUD accounts & contacts
 │       │       ├── dashboard.py       # Dashboard metrics + mat views
-│       │       └── agents.py          # AI agent trigger endpoints
+│       │       ├── agents.py          # AI agent trigger endpoints
+│       │       ├── presales_kpi.py    # Presales KPI CRUD + summary
+│       │       └── presales_work.py   # Presales work tracking CRUD + summary
 │       │
 │       └── agents/
 │           ├── __init__.py
@@ -344,10 +360,16 @@ renrnd-sales-agentic/
 │   ├── postcss.config.mjs
 │   └── src/
 │       ├── app/
-│       │   ├── layout.tsx       # Root layout (Sidebar + Header)
-│       │   ├── globals.css      # Global styles
+│       │   ├── layout.tsx       # Root layout (Sidebar + Header + AuthWrapper)
+│       │   ├── globals.css      # Global styles + theme tokens
 │       │   ├── page.tsx         # Dashboard (stat cards + charts)
 │       │   ├── error.tsx        # Error boundary
+│       │   ├── global-error.tsx # Global error boundary
+│       │   ├── not-found.tsx    # 404 page
+│       │   ├── login/
+│       │   │   └── page.tsx     # Login page
+│       │   ├── register/
+│       │   │   └── page.tsx     # Register page
 │       │   ├── pipeline/
 │       │   │   └── page.tsx     # Pipeline Kanban (drag & drop)
 │       │   ├── opportunities/
@@ -358,18 +380,35 @@ renrnd-sales-agentic/
 │       │   │       └── page.tsx # Detail + inline edit
 │       │   ├── agents/
 │       │   │   └── page.tsx     # AI Agents trigger page
-│       │   └── analytics/
-│       │       └── page.tsx     # Analytics + Tableau embed
+│       │   ├── analytics/
+│       │   │   └── page.tsx     # Analytics + Tableau embed
+│       │   ├── presales-kpi/
+│       │   │   └── page.tsx     # Presales KPI management
+│       │   ├── presales-work/
+│       │   │   └── page.tsx     # Presales work tracking (BOM, proposal, POC)
+│       │   └── admin/
+│       │       └── page.tsx     # Admin panel (user management)
 │       │
 │       ├── components/
 │       │   ├── layout/
-│       │   │   ├── Sidebar.tsx  # Navigation sidebar
-│       │   │   └── Header.tsx  # Page header
-│       │   └── ui/
-│       │       └── Card.tsx     # Card, StatCard, Badge components
+│       │   │   ├── Sidebar.tsx     # Navigation sidebar (RBAC-aware)
+│       │   │   ├── Header.tsx     # Page header + search
+│       │   │   └── AuthWrapper.tsx # Auth guard wrapper
+│       │   ├── ui/
+│       │   │   ├── Card.tsx         # Card, StatCard, Badge components
+│       │   │   ├── ConfirmDialog.tsx # Confirmation dialog
+│       │   │   ├── EmptyState.tsx   # Empty state placeholder
+│       │   │   ├── ErrorState.tsx   # Error state placeholder
+│       │   │   ├── OnboardingCard.tsx # Onboarding tips card
+│       │   │   └── Skeleton.tsx     # Loading skeleton
+│       │   ├── Logo.tsx           # WinMap logo
+│       │   ├── ThemeToaster.tsx   # Theme-aware toast container
+│       │   └── UserGuide.tsx      # User guide modal
 │       │
 │       ├── lib/
-│       │   ├── api.ts           # API client (fetch wrapper)
+│       │   ├── api.ts           # API client (fetch wrapper, httpOnly cookie auth)
+│       │   ├── auth.tsx         # Auth context provider (useAuth hook)
+│       │   ├── theme.tsx        # Theme context provider (light/dark mode)
 │       │   └── utils.ts         # Helper functions
 │       │
 │       └── types/
@@ -401,6 +440,24 @@ http://localhost:8000/docs
 ```
 
 ### Endpoints
+
+#### Authentication
+
+| Method | Path | Deskripsi |
+|--------|------|-----------|
+| POST | `/auth/register` | Registrasi user baru |
+| POST | `/auth/login` | Login → set JWT httpOnly cookie |
+| POST | `/auth/logout` | Logout → clear cookie |
+| GET | `/auth/me` | Info user saat ini |
+
+#### Admin Panel (superadmin only)
+
+| Method | Path | Deskripsi |
+|--------|------|-----------|
+| GET | `/admin/users` | List semua user |
+| PATCH | `/admin/users/{id}` | Update role/status user |
+| DELETE | `/admin/users/{id}` | Hapus user |
+| GET | `/admin/stats` | Statistik sistem |
 
 #### Opportunities
 
@@ -459,6 +516,42 @@ http://localhost:8000/docs
 | POST | `/agents/opportunity/run` | Trigger Opportunity Agent |
 | POST | `/agents/pipeline/scan` | Trigger Pipeline Agent |
 | GET | `/agents/insight/briefing` | Get Daily Briefing |
+
+#### Presales KPI
+
+| Method | Path | Deskripsi |
+|--------|------|-----------|
+| GET | `/presales-kpi/meta` | Metadata kategori KPI |
+| GET | `/presales-kpi` | List KPI (filter: user_id, category, period) |
+| POST | `/presales-kpi` | Buat KPI baru |
+| PATCH | `/presales-kpi/{id}` | Update KPI |
+| DELETE | `/presales-kpi/{id}` | Hapus KPI |
+| GET | `/presales-kpi/summary` | Summary KPI per kategori + achievement rate |
+
+#### Presales Work Tracking
+
+| Method | Path | Deskripsi |
+|--------|------|-----------|
+| GET | `/presales-work/meta` | Metadata jenis pekerjaan (BOM, Proposal, POC) |
+| GET | `/presales-work` | List pekerjaan presales (filter: work_type, status, outcome) |
+| POST | `/presales-work` | Buat pekerjaan presales baru |
+| PATCH | `/presales-work/{id}` | Update pekerjaan (status, outcome, dll) |
+| DELETE | `/presales-work/{id}` | Hapus pekerjaan |
+| GET | `/presales-work/summary` | Summary per jenis + win rate + overdue |
+
+**Jenis Pekerjaan:**
+
+| Key | Label | Deskripsi |
+|-----|-------|-----------|
+| `bom` | BOM | Bill of Materials — rincian kebutuhan hardware/software |
+| `proposal_teknis` | Proposal Teknis | Dokumen proposal teknis solusi & arsitektur |
+| `proposal_rfp` | Proposal RFP | Jawaban RFP dari customer/principal |
+| `proposal_lainnya` | Proposal Lainnya | Proposal komersial, RFQ, EOI, dll |
+| `poc` | POC | Proof of Concept — demo/pilot solusi |
+
+**Status Workflow:** `todo` → `in_progress` → `review` → `done`
+
+**Outcome Tracking:** `pending` → `won` / `lost` (Close Won = deal berhasil, Close Lost = deal gagal)
 
 ### Contoh Penggunaan
 
@@ -561,19 +654,104 @@ Output: {metrics, briefing}
 
 ---
 
-## 9. Frontend
+## 9. Authentication & RBAC
+
+### Sistem Autentikasi
+
+Aplikasi menggunakan **JWT token** yang disimpan di **httpOnly cookie** untuk keamanan maksimum:
+
+- **Login:** `POST /api/v1/auth/login` → set cookie `access_token` (httpOnly, SameSite=Lax)
+- **Logout:** `POST /api/v1/auth/logout` → clear cookie
+- **Current User:** `GET /api/v1/auth/me` → info user dari JWT
+- **Frontend:** `AuthWrapper` component mengecek auth di setiap halaman, redirect ke `/login` jika belum auth
+
+### Role-Based Access Control (RBAC)
+
+| Role | Akses |
+|------|-------|
+| `superadmin` | Akses penuh ke semua fitur + admin panel + assign user ke role manapun |
+| `presales` | Akses dashboard, pipeline, opportunities, presales KPI, presales work tracking (data sendiri) |
+| `sales_rep` | Akses dashboard, pipeline, opportunities, analytics |
+| `sales_manager` | Akses dashboard, pipeline, opportunities, analytics + team overview |
+
+### Default Superadmin
+
+```
+Email: admin@winmap.id
+Password: password123
+```
+
+> **Penting:** Ganti password superadmin setelah deploy pertama!
+
+---
+
+## 10. Presales Features
+
+### 10.1 Presales KPI
+
+Halaman `/presales-kpi` — kelola KPI tim presales per kategori:
+
+- **Kategori KPI:** Beragam kategori dengan target & pencapaian
+- **Tracking:** Target vs achievement per period
+- **Summary:** Achievement rate per kategori
+- **RBAC:** Superadmin bisa lihat semua user, presales hanya lihat data sendiri
+
+### 10.2 Presales Work Tracking
+
+Halaman `/presales-work` — lacak pekerjaan presales dari awal sampai close won/lost:
+
+**Jenis Pekerjaan:**
+
+| Jenis | Deskripsi | Use Case |
+|-------|-----------|----------|
+| BOM | Bill of Materials | Rincian kebutuhan hardware/software untuk solusi |
+| Proposal Teknis | Dokumen teknis | Arsitektur, design implementasi, spesifikasi |
+| Proposal RFP | Jawaban RFP | Response formal ke RFP customer/principal |
+| Proposal Lainnya | Proposal komersial | RFQ, EOI, proposal komersial lainnya |
+| POC | Proof of Concept | Demo/pilot untuk membuktikan solusi |
+
+**Workflow Status:**
+```
+todo → in_progress → review → done
+```
+
+**Outcome Tracking:**
+```
+pending → won (Close Won) / lost (Close Lost)
+```
+
+- Saat outcome di-set `won`/`lost`: status otomatis `done` + `completed_at` terisi
+- Saat outcome di-reset ke `pending`: `completed_at` di-clear
+- Win rate dihitung otomatis: `won / (won + lost) * 100%`
+
+**Fitur Lain:**
+- Link ke opportunity (opsional)
+- Priority: low / medium / high / urgent
+- Due date + auto overdue flag
+- Filter per jenis pekerjaan
+- Summary cards: total, per status, won/lost, win rate, overdue
+- RBAC: Superadmin bisa lihat semua, presales hanya data sendiri
+
+---
+
+## 11. Frontend
 
 ### Halaman yang Tersedia
 
 | Route | Halaman | Fitur |
 |-------|---------|-------|
-| `/` | Dashboard | 4 stat cards, bar chart funnel, pie chart distribusi, tabel opportunities terbaru |
+| `/login` | Login | Form login dengan JWT httpOnly cookie |
+| `/register` | Register | Form registrasi user baru |
+| `/` | Dashboard | 4 stat cards, bar chart funnel, pie chart distribusi, tabel opportunities terbaru, target tracking, sales ranking |
 | `/pipeline` | Pipeline Kanban | Drag & drop opportunity antar stage dengan optimistic update |
 | `/opportunities` | Opportunities List | Tabel dengan filter, win prob bar, badge sumber |
 | `/opportunities/new` | Create Form | Form pembuatan opportunity manual |
 | `/opportunities/[id]` | Detail + Edit | Inline editing, aktivitas timeline, AI metadata |
 | `/agents` | AI Agents | Trigger 3 agents: Opportunity, Pipeline, Insight |
 | `/analytics` | Analytics + Tableau | Bar chart, line chart forecast, Tableau iframe embed |
+| `/presales-kpi` | Presales KPI | Kelola KPI tim presales per kategori, tracking target & pencapaian (presales only) |
+| `/presales-work` | Tracking Pekerjaan | Lacak BOM, Proposal Teknis, RFP, POC — filter per jenis, status won/lost, win rate (presales only) |
+| `/admin` | Admin Panel | Manajemen user, role assignment, statistik sistem (superadmin only) |
 
 ### API Client
 
@@ -599,7 +777,7 @@ await apiDelete(`/opportunities/${id}`);
 
 ---
 
-## 10. Tableau Dashboard
+## 12. Tableau Dashboard
 
 ### Setup Tableau Connection
 
@@ -639,9 +817,9 @@ await apiDelete(`/opportunities/${id}`);
 
 ---
 
-## 11. Deployment
+## 13. Deployment
 
-### 11.1 Development Deployment (Docker Compose)
+### 13.1 Development Deployment (Docker Compose)
 
 ```bash
 # Set environment
@@ -659,7 +837,7 @@ docker compose logs -f backend
 docker compose logs -f celery_worker
 ```
 
-### 11.2 Production Deployment (docker-compose.prod.yml)
+### 13.2 Production Deployment (docker-compose.prod.yml)
 
 Production menggunakan **gunicorn** (4 workers), **Celery** (worker + beat), dan **Nginx** reverse proxy.
 
@@ -745,7 +923,7 @@ curl -I http://localhost
 # Expected: HTTP/1.1 200
 ```
 
-### 11.3 Nginx Reverse Proxy
+### 13.3 Nginx Reverse Proxy
 
 File konfigurasi: `nginx/nginx.conf`
 
@@ -763,7 +941,7 @@ Fitur Nginx:
 - Reverse proxy ke backend & frontend
 - Rate limiting (opsional, uncomment di config)
 
-### 11.4 Environment Variables
+### 13.4 Environment Variables
 
 | Variable | Default | Deskripsi |
 |----------|---------|-----------|
@@ -779,7 +957,7 @@ Fitur Nginx:
 | `POSTGRES_PASSWORD` | (required prod) | Password database production |
 | `NEXT_PUBLIC_API_URL` | `http://localhost:8000` | URL backend untuk frontend |
 
-### 11.5 CI/CD Pipeline (GitHub Actions)
+### 13.5 CI/CD Pipeline (GitHub Actions)
 
 File: `.github/workflows/ci.yml`
 
@@ -800,7 +978,7 @@ on:
     branches: [main]
 ```
 
-### 11.6 Production Checklist
+### 13.6 Production Checklist
 
 - [ ] Set `ARK_API_KEY` dengan API key production
 - [ ] Set `POSTGRES_PASSWORD` dengan password yang kuat
@@ -817,7 +995,80 @@ on:
 - [ ] Configure database backup schedule
 - [ ] Setup auto-restart policy (`restart: unless-stopped` sudah aktif)
 
-### 11.7 Docker Commands (Production)
+### 13.7 Deploy Scripts (start.sh & stop.sh)
+
+Aplikasi dilengkapi script deploy yang menangani **apparmor issue** di Ubuntu/NUC:
+
+#### start.sh
+
+```bash
+sudo ./start.sh                    # Start semua service
+sudo ./start.sh --build            # Force rebuild semua image
+```
+
+**Fitur:**
+- Cek Docker running, environment, compose file
+- **Pre-start: force-kill container lama** (apparmor workaround)
+  - Disable restart policy (`docker update --restart=no`)
+  - Kill PID container langsung (`kill -9`)
+  - Remove container (`docker rm -f`)
+  - Prune stopped containers
+- Build & start semua 7 service
+- Post-start: health check + verify semua container running
+
+#### stop.sh
+
+```bash
+sudo ./stop.sh                     # Stop semua service
+sudo ./stop.sh --clean             # Stop + hapus volumes (DANGER!)
+```
+
+**Fitur:**
+- **Pre-stop: force-kill container PIDs** (apparmor workaround)
+  - Disable restart policy dulu (cegah auto-restart)
+  - Kill PID langsung + remove container
+- `docker compose down` untuk cleanup network
+- Verify semua container benar-benar stopped
+- Fallback: force-kill lagi jika masih ada running
+
+#### Apparmor Workaround
+
+Di Ubuntu dengan AppArmor aktif, `docker stop` bisa gagal dengan `permission denied`. Script `start.sh`/`stop.sh` menangani ini dengan:
+
+1. `docker update --restart=no` — cegah Docker auto-restart container
+2. `kill -9 $PID` — kill proses container langsung di kernel level
+3. `docker rm -f` — remove container setelah process mati
+4. `docker container prune -f` — cleanup stopped containers
+
+### 13.8 Cloudflare Tunnel Deployment
+
+Untuk expose aplikasi ke internet tanpa public IP:
+
+```bash
+# Install cloudflared
+sudo apt install cloudflared
+
+# Login & create tunnel
+cloudflared tunnel login
+cloudflared tunnel create winmap
+
+# Configure tunnel → point ke nginx (port 80)
+# ~/.cloudflared/config.yml:
+# tunnel: <tunnel-id>
+# credentials-file: ~/.cloudflared/<tunnel-id>.json
+# ingress:
+#   - hostname: winmap.yourdomain.site
+#     service: http://localhost:80
+#   - service: http_status:404
+
+# Setup DNS route
+cloudflared tunnel route dns winmap winmap.yourdomain.site
+
+# Run tunnel
+cloudflared tunnel run winmap
+```
+
+### 13.9 Docker Commands (Production)
 
 ```bash
 # Start semua
@@ -847,7 +1098,7 @@ docker compose -f docker-compose.prod.yml up -d --scale backend=2
 
 ---
 
-## 12. Testing
+## 14. Testing
 
 ### Backend Test
 
@@ -948,7 +1199,7 @@ open http://localhost:3000
 
 ---
 
-## 13. Troubleshooting
+## 15. Troubleshooting
 
 ### Backend
 
@@ -1049,6 +1300,90 @@ lsof -i :6379  # redis
 open -a Docker
 # Tunggu hingga Docker Desktop siap
 docker info
+```
+
+**Problem: `docker stop` gagal — "permission denied" (AppArmor)**
+
+```bash
+# Gejala: docker stop / docker compose down gagal dengan:
+# "Error response from daemon: cannot stop container: ... permission denied"
+
+# Solusi: Gunakan start.sh / stop.sh (sudah include workaround)
+sudo ./stop.sh
+sudo ./start.sh
+
+# Manual workaround:
+# 1. Disable restart policy
+sudo docker update --restart=no <container_id>
+
+# 2. Kill PID langsung
+PID=$(sudo docker inspect -f '{{.State.Pid}}' <container_id>)
+sudo kill -9 $PID
+
+# 3. Remove container
+sudo docker rm -f <container_id>
+
+# 4. Prune
+sudo docker container prune -f
+```
+
+**Problem: Container terus restart setelah kill**
+
+```bash
+# Docker auto-restart karena restart policy "always" / "unless-stopped"
+# Solusi: disable restart policy SEBELUM kill
+sudo docker update --restart=no $(sudo docker ps -q --filter name=rsa)
+# Lalu kill + remove
+sudo kill -9 $(sudo docker inspect -f '{{.State.Pid}}' $(sudo docker ps -q --filter name=rsa))
+sudo docker rm -f $(sudo docker ps -aq --filter name=rsa)
+```
+
+### Authentication
+
+**Problem: Login gagal — "Invalid credentials"**
+
+```bash
+# Cek user ada di database
+docker exec rsa_prod_postgres psql -U rsa_admin -d rsa_sales \
+  -c "SELECT email, role, is_active FROM users WHERE email='admin@winmap.id';"
+
+# Reset password superadmin (jalankan di backend container)
+docker exec -it rsa_prod_backend python3 -c "
+from app.db.database import get_sync_session
+from app.models import User
+from passlib.context import CryptContext
+pwd = CryptContext(schemes=['bcrypt']).hash('password123')
+# Lihat auth.py untuk implementasi reset password
+"
+```
+
+**Problem: Frontend redirect ke /login terus-menerus**
+
+```bash
+# Cek cookie di browser (DevTools > Application > Cookies)
+# Pastikan cookie 'access_token' ada dan tidak expired
+
+# Cek backend auth endpoint
+curl -X POST http://localhost:8000/api/v1/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"admin@winmap.id","password":"password123"}' \
+  -v  # lihat Set-Cookie header
+```
+
+### Migration
+
+**Problem: Table tidak ada setelah deploy**
+
+```bash
+# Migration auto-run saat backend start, tapi bisa di-trigger manual:
+docker exec rsa_prod_backend python3 -m app.db.migrate
+
+# Cek tabel yang ada
+docker exec rsa_prod_postgres psql -U rsa_admin -d rsa_sales \
+  -c "\dt"
+
+# Harus ada: users, accounts, contacts, opportunities, stages, activities,
+#            tasks, agent_logs, presales_kpis, presales_work
 ```
 
 ---
