@@ -14,6 +14,11 @@ import {
   HelpCircle,
   Sparkles,
   CheckCircle2,
+  ClipboardCheck,
+  ListChecks,
+  LogIn,
+  Sun,
+  Moon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/lib/auth";
@@ -27,6 +32,7 @@ type Step = {
   description: string;
   tips?: string[];
   superadminOnly?: boolean;
+  presalesOnly?: boolean;
 };
 
 const steps: Step[] = [
@@ -38,6 +44,13 @@ const steps: Step[] = [
     tips: ["Panduan ini hanya muncul sekali", "Anda bisa membuka kembali kapan saja lewat tombol Panduan di sidebar"],
   },
   {
+    icon: LogIn,
+    title: "Login & Register",
+    description:
+      "Masuk ke akun WinMap dengan email & password. Sistem autentikasi menggunakan JWT token yang disimpan di httpOnly cookie untuk keamanan maksimum. Daftarkan superadmin bisa assign role user lainnya.",
+    tips: ["Login dengan email & password terdaftar", "Superadmin default: admin@winmap.id / password123", "Ganti password setelah login pertama!"],
+  },
+ {
     icon: LayoutDashboard,
     title: "Dashboard",
     description:
@@ -73,6 +86,29 @@ const steps: Step[] = [
     tips: ["Analisis performa per sales rep", "Lihat tren revenue dan conversion rate"],
   },
   {
+    icon: ClipboardCheck,
+    title: "Presales KPI",
+    description:
+      "Kelola KPI tim presales per kategori. Atur target & pencapaian KPI, track achievement rate, dan pastikan progress setiap kategori. Superadmin bisa lihat semua user, presales hanya data sendiri.",
+    tips: ["Atur target KPI per kategori (misal: 10 demo proposal/bulan)", "Track achievement rate per kategori"],
+    presalesOnly: true,
+  },
+  {
+    icon: ListChecks,
+    title: "Tracking Pekerjaan Presales",
+    description:
+      "Lacak pekerjaan presales dari awal hingga close won/lost: BOM, Proposal Teknis, Proposal RFP, Proposal Lainnya, dan POC. Set outcome ke won (Close Won) atau lost (Close Lost) — status otomatis done + completed_at terisi. Win rate dihitung otomatis.",
+    tips: ["Pilih jenis pekerjaan: BOM, Proposal Teknis/RFP/Lainnya, atau POC", "Set outcome: Won (deal berhasil) atau Lost (deal gagal)", "Link ke opportunity (opsional) + atur due date"],
+    presalesOnly: true,
+  },
+  {
+    icon: Sun,
+    title: "Light/Dark Mode",
+    description:
+      "Beralih antara tema terang dan gelap sesuai preferensi Anda. Toggle ada di sidebar — klik icon Sun/Moon. Preferensi disimpan otomatis di browser.",
+    tips: ["Klik icon Sun/Moon di sidebar untuk toggle", "Preferensi tersimpan otomatis di browser"],
+  },
+  {
     icon: ShieldCheck,
     title: "Admin Panel",
     description:
@@ -95,9 +131,12 @@ export function UserGuide() {
   const [currentStep, setCurrentStep] = useState(0);
 
   const isSuperadmin = user?.is_superuser || user?.role === "superadmin";
+  const isPresales = user?.role === "presales" || isSuperadmin;
 
   // Filter steps based on role
-  const visibleSteps = steps.filter((s) => !s.superadminOnly || isSuperadmin);
+  const visibleSteps = steps.filter(
+    (s) => (!s.superadminOnly || isSuperadmin) && (!s.presalesOnly || isPresales)
+  );
 
   // Auto-show guide on first visit (when localStorage key doesn't exist)
   useEffect(() => {
