@@ -92,9 +92,11 @@ build_compose_cmd() {
     fi
 }
 
-# ── Force-kill container PIDs (apparmor workaround) ──
-# Saat docker stop gagal karena apparmor (permission denied),
-# kita kill PID container langsung via kill -9.
+# ── Force-kill & remove containers (apparmor workaround) ──
+# Saat docker stop gagal karena apparmor (permission denied):
+# 1. Set restart policy ke "no" (cegah Docker auto-restart)
+# 2. Kill PID container langsung via kill -9
+# 3. Remove container (docker rm -f) agar compose bisa recreate
 force_kill_containers() {
     local filter="${1:-name=rsa}"
     local docker_cmd
@@ -105,11 +107,17 @@ force_kill_containers() {
     fi
 
     local cids
-    cids=$("${docker_cmd[@]}" ps -q --filter "$filter" 2>/dev/null || true)
+    cids=$("${docker_cmd[@]}" ps -aq --filter "$filter" 2>/dev/null || true)
     if [[ -z "$cids" ]]; then
         return 0
     fi
 
+    # Step 1: Disable restart policy (cegah auto-restart setelah kill)
+    for cid in $cids; do
+        "${docker_cmd[@]}" update --restart=no "$cid" &>/dev/null || true
+    done
+
+    # Step 2: Kill PID langsung
     for cid in $cids; do
         local pid
         pid=$("${docker_cmd[@]}" inspect -f '{{.State.Pid}}' "$cid" 2>/dev/null || echo "0")
@@ -119,10 +127,13 @@ force_kill_containers() {
         fi
     done
 
-    # Wait briefly for kernel to reap processes
+    # Step 3: Wait + remove containers
     sleep 2
+    for cid in $cids; do
+        "${docker_cmd[@]}" rm -f "$cid" &>/dev/null || true
+    done
 
-    # Prune stopped containers so compose can recreate cleanly
+    # Final cleanup: prune any remaining stopped containers
     "${docker_cmd[@]}" container prune -f &>/dev/null || true
 }
 
