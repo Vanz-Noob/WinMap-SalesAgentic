@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, KanbanSquare, Target, Bot, BarChart3, ClipboardCheck, LogOut, X, ShieldCheck, HelpCircle, Sun, Moon } from "lucide-react";
+import { LayoutDashboard, KanbanSquare, Target, Bot, BarChart3, ClipboardCheck, ListChecks, LogOut, X, ShieldCheck, HelpCircle, Sun, Moon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/lib/auth";
 import { useTheme } from "@/lib/theme";
@@ -23,6 +23,7 @@ const navItems: NavItem[] = [
   { href: "/agents", label: "AI Agents", description: "Kelola AI agent untuk auto-create deal", icon: Bot },
   { href: "/analytics", label: "Analytics", description: "Laporan dan analisis sales", icon: BarChart3 },
   { href: "/presales-kpi", label: "Presales KPI", description: "Kelola KPI tim presales", icon: ClipboardCheck, presalesOnly: true },
+  { href: "/presales-work", label: "Tracking Pekerjaan", description: "Lacak BOM, proposal & POC — sampai close won/lost", icon: ListChecks, presalesOnly: true },
   { href: "/admin", label: "Admin Panel", description: "Manajemen user, role & sistem", icon: ShieldCheck, superadminOnly: true },
 ];
 

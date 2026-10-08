@@ -383,3 +383,56 @@ export interface PresalesKpiSummary {
   quarter: string;
   year: number | string;
 }
+
+// ── Presales Work Tracking ────────────────────────────────────────────────
+
+export interface PresalesWorkItem {
+  id: string;
+  user_id: string | null;
+  user_name: string | null;
+  opportunity_id: string | null;
+  opportunity_name: string | null;
+  opportunity_value: number | null;
+  title: string;
+  description: string | null;
+  work_type: string;
+  priority: string;
+  status: string;
+  outcome: string;
+  outcome_notes: string | null;
+  due_date: string | null;
+  completed_at: string | null;
+  is_overdue: boolean;
+  created_at: string | null;
+  updated_at: string | null;
+}
+
+export interface PresalesWorkTypeSummary {
+  key: string;
+  label: string;
+  description: string;
+  icon: string;
+  color: string;
+  total: number;
+  todo: number;
+  in_progress: number;
+  review: number;
+  done: number;
+  won: number;
+  lost: number;
+  overdue: number;
+}
+
+export interface PresalesWorkSummary {
+  work_types: PresalesWorkTypeSummary[];
+  total: number;
+  total_todo: number;
+  total_in_progress: number;
+  total_review: number;
+  total_done: number;
+  total_won: number;
+  total_lost: number;
+  total_pending: number;
+  total_overdue: number;
+  win_rate: number;
+}

@@ -137,9 +137,30 @@ CREATE TABLE IF NOT EXISTS presales_kpis (
     updated_at  TIMESTAMP DEFAULT NOW()
 );
 
+-- Presales Work Tracking (BOM, Proposal Teknis/RFP/Lainnya, POC + close won/lost)
+CREATE TABLE IF NOT EXISTS presales_work (
+    id             UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id        UUID REFERENCES users(id) ON DELETE CASCADE,
+    opportunity_id UUID REFERENCES opportunities(id) ON DELETE SET NULL,
+    title          VARCHAR(255) NOT NULL,
+    description    TEXT,
+    work_type      VARCHAR(50) NOT NULL,
+    priority       VARCHAR(20) DEFAULT 'medium',
+    status         VARCHAR(20) DEFAULT 'todo',
+    outcome        VARCHAR(20) DEFAULT 'pending',
+    outcome_notes  TEXT,
+    due_date       DATE,
+    completed_at   TIMESTAMP,
+    created_at     TIMESTAMP DEFAULT NOW(),
+    updated_at     TIMESTAMP DEFAULT NOW()
+);
+
 -- ============================================
 -- INDEXES
 -- ============================================
+CREATE INDEX IF NOT EXISTS idx_presales_work_user ON presales_work(user_id);
+CREATE INDEX IF NOT EXISTS idx_presales_work_type ON presales_work(work_type, status, outcome);
+CREATE INDEX IF NOT EXISTS idx_presales_work_opp ON presales_work(opportunity_id);
 CREATE INDEX IF NOT EXISTS idx_presales_kpis_user ON presales_kpis(user_id);
 CREATE INDEX IF NOT EXISTS idx_presales_kpis_category ON presales_kpis(category, quarter, year);
 CREATE INDEX IF NOT EXISTS idx_opp_stage ON opportunities(stage_id);

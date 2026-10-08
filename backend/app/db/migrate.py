@@ -97,6 +97,37 @@ async def run_migrations():
                 """), {"email": "admin@winmap.id", "hash": hashed})
                 print("  ✅ Created superadmin user: admin@winmap.id")
 
+        # ── Migration 5: Presales Work Tracking table ──
+        result = await conn.execute(text("""
+            SELECT table_name FROM information_schema.tables
+            WHERE table_name = 'presales_work'
+        """))
+        if not result.fetchone():
+            await conn.execute(text("""
+                CREATE TABLE presales_work (
+                    id             UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                    user_id        UUID REFERENCES users(id) ON DELETE CASCADE,
+                    opportunity_id UUID REFERENCES opportunities(id) ON DELETE SET NULL,
+                    title          VARCHAR(255) NOT NULL,
+                    description    TEXT,
+                    work_type      VARCHAR(50) NOT NULL,
+                    priority       VARCHAR(20) DEFAULT 'medium',
+                    status         VARCHAR(20) DEFAULT 'todo',
+                    outcome        VARCHAR(20) DEFAULT 'pending',
+                    outcome_notes  TEXT,
+                    due_date       DATE,
+                    completed_at   TIMESTAMP,
+                    created_at     TIMESTAMP DEFAULT NOW(),
+                    updated_at     TIMESTAMP DEFAULT NOW()
+                )
+            """))
+            await conn.execute(text("CREATE INDEX IF NOT EXISTS idx_presales_work_user ON presales_work(user_id)"))
+            await conn.execute(text("CREATE INDEX IF NOT EXISTS idx_presales_work_type ON presales_work(work_type, status, outcome)"))
+            await conn.execute(text("CREATE INDEX IF NOT EXISTS idx_presales_work_opp ON presales_work(opportunity_id)"))
+            print("  ✅ Created table: presales_work")
+        else:
+            print("  ✓ Table already exists: presales_work")
+
     await engine.dispose()
     print("✅ Migration complete.\n")
 

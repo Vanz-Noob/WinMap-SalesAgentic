@@ -47,7 +47,7 @@ async def health():
 
 
 # --- Register Routers ---
-from app.api.v1 import opportunities, stages, activities, tasks, accounts, dashboard, agents, presales_kpi, auth, admin  # noqa: E402
+from app.api.v1 import opportunities, stages, activities, tasks, accounts, dashboard, agents, presales_kpi, presales_work, auth, admin  # noqa: E402
 
 # Auth dependency applied at router level — all endpoints require login by default
 _auth = [Depends(get_current_active_user)]
@@ -62,3 +62,4 @@ app.include_router(accounts.router, prefix="/api/v1", dependencies=_auth)
 app.include_router(dashboard.router, prefix="/api/v1", dependencies=_auth)
 app.include_router(agents.router, prefix="/api/v1", dependencies=_auth)
 app.include_router(presales_kpi.router, prefix="/api/v1", dependencies=_auth)
+app.include_router(presales_work.router, prefix="/api/v1", dependencies=_auth)
