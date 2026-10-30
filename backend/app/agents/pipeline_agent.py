@@ -3,8 +3,10 @@ Pipeline Agent: Evaluasi & rekomendasi stage transition, win probability, next b
 Menggunakan BytePlus ModelArk Skylark-pro untuk reasoning.
 """
 import json
+import math
 from app.llm_client import chat_pro
-from app.models import Opportunity, Stage, Activity, AgentLog
+from app.auth import opportunity_scope
+from app.models import Opportunity, Stage, Activity, AgentLog, User
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from datetime import datetime, timedelta
@@ -98,14 +100,18 @@ async def evaluate_deal(opp: Opportunity, activities: list[Activity], stages: li
         return {"error": "parse_failed"}
 
 
-async def run_pipeline_agent(db: AsyncSession, limit: int = 10) -> list[dict]:
+async def run_pipeline_agent(db: AsyncSession, current_user: User | None = None, limit: int = 10) -> list[dict]:
     """
     Scan active opportunities, evaluasi, dan return recommendations.
     Limit default 10 deals per run untuk mencegah timeout.
+    Hanya memproses opportunity milik requester (kecuali superadmin/sales_manager).
+    current_user=None = konteks sistem (Celery job) → global view.
     """
-    opps = (await db.execute(
-        select(Opportunity).join(Stage).where(Stage.is_closed.is_(False)).limit(limit)
-    )).scalars().all()
+    stmt = select(Opportunity).join(Stage).where(Stage.is_closed.is_(False))
+    scope = opportunity_scope(current_user)
+    if scope is not None:
+        stmt = stmt.where(scope)
+    opps = (await db.execute(stmt.limit(limit))).scalars().all()
 
     stages = (await db.execute(select(Stage).order_by(Stage.order))).scalars().all()
 
@@ -117,9 +123,15 @@ async def run_pipeline_agent(db: AsyncSession, limit: int = 10) -> list[dict]:
 
         evaluation = await evaluate_deal(opp, activities, stages)
 
-        # Update win probability if changed
+        # Update win probability jika LLM memberikan nilai numerik valid.
+        # Re-authorization write: hanya numeric asli (bukan bool), finite, dan
+        # di-clamp ke [0, 1] — output LLM tidak pernah dipercaya mentah.
         updated_prob = evaluation.get("updated_win_probability")
-        if updated_prob is not None and isinstance(updated_prob, (int, float)):
+        if (
+            isinstance(updated_prob, (int, float))
+            and not isinstance(updated_prob, bool)
+            and math.isfinite(float(updated_prob))
+        ):
             opp.win_probability = max(0.0, min(1.0, float(updated_prob)))
 
         log = AgentLog(

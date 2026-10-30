@@ -267,6 +267,7 @@ async def list_work(
     work_type: str | None = Query(None),
     work_status: str | None = Query(None, alias="status"),
     outcome: str | None = Query(None),
+    limit: int = Query(500, ge=1, le=1000),
     db: AsyncSession = Depends(get_db),
 ):
     """List pekerjaan presales dengan filter opsional.
@@ -296,7 +297,7 @@ async def list_work(
         stmt = stmt.where(and_(*conditions))
 
     # Overdue & urgent first, then newest
-    stmt = stmt.order_by(PresalesWork.created_at.desc())
+    stmt = stmt.order_by(PresalesWork.created_at.desc()).limit(limit)
     return await _load_joined(db, stmt)
 
 

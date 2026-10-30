@@ -4,29 +4,42 @@ Menggunakan BytePlus ModelArk Skylark-pro.
 """
 import json
 from app.llm_client import chat_pro
-from app.models import Opportunity, Stage, AgentLog
+from app.auth import opportunity_scope
+from app.models import Opportunity, Stage, AgentLog, User
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from datetime import datetime
 
 
-async def generate_daily_briefing(db: AsyncSession) -> dict:
+async def generate_daily_briefing(db: AsyncSession, current_user: User | None = None) -> dict:
     """
     Generate daily briefing: summary pipeline, insight, dan alert.
+    Agregat di-scope per owner (kecuali superadmin/sales_manager/system job).
     """
+    scope = opportunity_scope(current_user)
+
+    def _scoped(stmt):
+        return stmt.where(scope) if scope is not None else stmt
+
     # Aggregate metrics
     total_pipeline = (await db.execute(
-        select(func.sum(Opportunity.value * Opportunity.win_probability))
-        .join(Stage).where(Stage.is_closed.is_(False))
+        _scoped(
+            select(func.sum(Opportunity.value * Opportunity.win_probability))
+            .join(Stage).where(Stage.is_closed.is_(False))
+        )
     )).scalar() or 0
 
     total_deals = (await db.execute(
-        select(func.count(Opportunity.id)).join(Stage).where(Stage.is_closed.is_(False))
+        _scoped(
+            select(func.count(Opportunity.id)).join(Stage).where(Stage.is_closed.is_(False))
+        )
     )).scalar() or 0
 
     avg_prob = (await db.execute(
-        select(func.avg(Opportunity.win_probability))
-        .join(Stage).where(Stage.is_closed.is_(False))
+        _scoped(
+            select(func.avg(Opportunity.win_probability))
+            .join(Stage).where(Stage.is_closed.is_(False))
+        )
     )).scalar() or 0
 
     metrics = {

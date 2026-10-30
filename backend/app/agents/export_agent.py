@@ -5,8 +5,10 @@ Uses BytePlus ModelArk Skylark-pro for generating export insights.
 import csv
 import io
 import json
+import uuid
 from datetime import datetime, date
 from app.llm_client import chat_pro
+from app.auth import can_view_all_data
 from app.models import Opportunity, Stage, User, Account, PresalesKpi, AgentLog
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, and_
@@ -20,7 +22,7 @@ async def _export_pipeline(
     owner_id: str | None = None,
     closed_only: bool = False,
 ) -> list[dict]:
-    """Export pipeline (opportunities) data."""
+    """Export pipeline (opportunities) data. owner_id dipaksa oleh run_export_agent sesuai role."""
     PresalesUser = aliased(User)
     stmt = (
         select(Opportunity, Stage.name.label("stage_name"), User.name.label("owner_name"), Account.name.label("account_name"), PresalesUser.name.label("presales_name"))
@@ -79,14 +81,17 @@ async def _export_presales_kpi(
     category: str | None = None,
     quarter: str | None = None,
     year: int | None = None,
+    user_id=None,
 ) -> list[dict]:
-    """Export presales KPI data."""
+    """Export presales KPI data. user_id dipaksa oleh run_export_agent sesuai role."""
     stmt = (
         select(PresalesKpi, User.name.label("user_name"))
         .outerjoin(User, PresalesKpi.user_id == User.id)
     )
 
     conditions = []
+    if user_id:
+        conditions.append(PresalesKpi.user_id == user_id)
     if category and category != "all":
         conditions.append(PresalesKpi.category == category)
     if quarter:
@@ -126,14 +131,25 @@ async def _export_presales_kpi(
     return data
 
 
+_CSV_FORMULA_PREFIXES = ("=", "+", "-", "@", "\t", "\r")
+
+
+def _csv_safe(value):
+    """Netralkan spreadsheet formula injection: cell string yang diawali
+    = + - @ tab/cr di-prefix kutip tunggal (OWASP CSV injection guidance)."""
+    if isinstance(value, str) and value[:1] in _CSV_FORMULA_PREFIXES:
+        return "'" + value
+    return value
+
+
 def _to_csv(data: list[dict]) -> str:
-    """Convert list of dicts to CSV string."""
+    """Convert list of dicts to CSV string (formula-injection safe)."""
     if not data:
         return "No data found"
     output = io.StringIO()
     writer = csv.DictWriter(output, fieldnames=data[0].keys())
     writer.writeheader()
-    writer.writerows(data)
+    writer.writerows({k: _csv_safe(v) for k, v in row.items()} for row in data)
     return output.getvalue()
 
 
@@ -213,9 +229,10 @@ async def _generate_export_summary(
 
 async def run_export_agent(
     db: AsyncSession,
+    current_user,
     data_type: Literal["pipeline", "presales"] = "pipeline",
     stage_filter: str | None = None,
-    owner_id: str | None = None,
+    owner_id: uuid.UUID | None = None,
     category: str | None = None,
     quarter: str | None = None,
     year: int | None = None,
@@ -229,20 +246,27 @@ async def run_export_agent(
 
     Filters for pipeline:
       - stage_filter: "all", "open", "closed_won", "closed_lost", or specific stage name
-      - owner_id: filter by sales rep
+      - owner_id: filter by sales rep (hanya superadmin/sales_manager boleh specify;
+        role lain dipaksa ke data milik sendiri)
 
     Filters for presales:
       - category: "all" or specific category key
       - quarter: e.g. "Q3"
       - year: e.g. 2026
     """
+    # Owner-scoping: non-superadmin/sales_manager selalu terbatas ke data sendiri,
+    # owner_id dari client diabaikan.
+    forced_owner_id = None if can_view_all_data(current_user) else current_user.id
+    if forced_owner_id is not None:
+        owner_id = forced_owner_id
+
     filters = {"data_type": data_type}
 
     if data_type == "pipeline":
         if stage_filter:
             filters["stage"] = stage_filter
         if owner_id:
-            filters["owner_id"] = owner_id
+            filters["owner_id"] = str(owner_id)
         data = await _export_pipeline(db, stage_filter=stage_filter, owner_id=owner_id)
         csv_content = _to_csv(data)
         ai_summary = await _generate_export_summary("pipeline", data, filters)
@@ -253,7 +277,10 @@ async def run_export_agent(
             filters["quarter"] = quarter
         if year:
             filters["year"] = year
-        data = await _export_presales_kpi(db, category=category, quarter=quarter, year=year)
+        kpi_user_id = None if can_view_all_data(current_user) else current_user.id
+        data = await _export_presales_kpi(
+            db, category=category, quarter=quarter, year=year, user_id=kpi_user_id
+        )
         csv_content = _to_csv(data)
         ai_summary = await _generate_export_summary("presales", data, filters)
 

@@ -1,11 +1,15 @@
 """Dashboard API: aggregated metrics for frontend & Tableau."""
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, text
+from sqlalchemy import and_, select, func, text
 from app.db.database import get_db
+from app.auth import can_view_all_data, get_current_active_user, opportunity_scope
 from app.models import Opportunity, Stage, User, Activity, Account
+from typing import Annotated
 
 router = APIRouter(prefix="/dashboard", tags=["dashboard"])
+
+CurrentUser = Annotated[User, Depends(get_current_active_user)]
 
 
 async def _refresh_materialized_views(db: AsyncSession):
@@ -28,8 +32,14 @@ async def _refresh_materialized_views(db: AsyncSession):
 
 
 @router.get("/summary")
-async def get_summary(db: AsyncSession = Depends(get_db)):
-    """Pipeline summary: total value, deal count, avg probability per stage."""
+async def get_summary(db: AsyncSession = Depends(get_db), current_user: CurrentUser = None):
+    """Pipeline summary: total value, deal count, avg probability per stage (scoped per owner)."""
+    scope = opportunity_scope(current_user)
+    join_cond = (
+        and_(Opportunity.stage_id == Stage.id, scope)
+        if scope is not None
+        else Opportunity.stage_id == Stage.id
+    )
     result = await db.execute(
         select(
             Stage.name,
@@ -38,7 +48,7 @@ async def get_summary(db: AsyncSession = Depends(get_db)):
             func.coalesce(func.sum(Opportunity.value), 0).label("total_value"),
             func.coalesce(func.avg(Opportunity.win_probability), 0).label("avg_prob"),
         )
-        .outerjoin(Opportunity, Opportunity.stage_id == Stage.id)
+        .outerjoin(Opportunity, join_cond)
         .group_by(Stage.name, Stage.order)
         .order_by(Stage.order)
     )
@@ -56,8 +66,35 @@ async def get_summary(db: AsyncSession = Depends(get_db)):
 
 
 @router.get("/forecast")
-async def get_forecast(db: AsyncSession = Depends(get_db)):
-    """Weighted pipeline forecast by month."""
+async def get_forecast(db: AsyncSession = Depends(get_db), current_user: CurrentUser = None):
+    """Weighted pipeline forecast by month (scoped per owner untuk non-manager)."""
+    scope = opportunity_scope(current_user)
+    if scope is not None:
+        # Hitung inline dari opportunity milik sendiri (MV bersifat all-tenant)
+        from collections import defaultdict
+
+        opps = (await db.execute(select(Opportunity).where(scope))).scalars().all()
+        by_month = defaultdict(lambda: {"wp": 0.0, "uw": 0.0, "count": 0, "probs": []})
+        for o in opps:
+            if not o.close_date:
+                continue
+            key = o.close_date.strftime("%Y-%m")
+            m = by_month[key]
+            m["wp"] += float(o.value) * float(o.win_probability or 0)
+            m["uw"] += float(o.value)
+            m["count"] += 1
+            m["probs"].append(float(o.win_probability or 0))
+        return [
+            {
+                "month": k,
+                "weighted_pipeline": v["wp"],
+                "unweighted_pipeline": v["uw"],
+                "deal_count": v["count"],
+                "avg_probability": (sum(v["probs"]) / len(v["probs"])) if v["probs"] else 0.0,
+            }
+            for k, v in sorted(by_month.items())
+        ]
+
     await _refresh_materialized_views(db)
     result = await db.execute(text("""
         SELECT close_month, weighted_pipeline, unweighted_pipeline, deal_count, avg_probability
@@ -77,10 +114,13 @@ async def get_forecast(db: AsyncSession = Depends(get_db)):
 
 
 @router.get("/rep-performance")
-async def get_rep_performance(db: AsyncSession = Depends(get_db)):
-    """Sales rep performance metrics."""
+async def get_rep_performance(db: AsyncSession = Depends(get_db), current_user: CurrentUser = None):
+    """Sales rep performance metrics (scoped ke diri sendiri untuk non-manager)."""
     await _refresh_materialized_views(db)
     result = await db.execute(text("SELECT * FROM mv_rep_performance"))
+    rows = list(result)
+    if not can_view_all_data(current_user):
+        rows = [r for r in rows if str(r.rep_id) == str(current_user.id)]
     return [
         {
             "rep_id": str(r.rep_id),
@@ -91,13 +131,13 @@ async def get_rep_performance(db: AsyncSession = Depends(get_db)):
             "avg_deal_size": float(r.avg_deal_size),
             "quota": float(r.quota) if r.quota else 0,
         }
-        for r in result
+        for r in rows
     ]
 
 
 @router.get("/sales-of-the-month")
-async def get_sales_of_the_month(db: AsyncSession = Depends(get_db)):
-    """Sales of the Month — ranking sales rep berdasarkan win rate & closed deals bulan ini."""
+async def get_sales_of_the_month(db: AsyncSession = Depends(get_db), current_user: CurrentUser = None):
+    """Sales of the Month — ranking sales rep berdasarkan win rate & closed deals bulan ini (scoped)."""
     from datetime import date
     today = date.today()
     month_start = today.replace(day=1)
@@ -107,6 +147,9 @@ async def get_sales_of_the_month(db: AsyncSession = Depends(get_db)):
         select(User).where(User.role == "sales_rep").order_by(User.name)
     )
     users = users_result.scalars().all()
+    if not can_view_all_data(current_user):
+        # Non-manager/superadmin hanya melihat statistik dirinya sendiri
+        users = [u for u in users if u.id == current_user.id]
 
     # Ambil semua stages
     stages_result = await db.execute(select(Stage))
@@ -191,8 +234,8 @@ async def get_sales_of_the_month(db: AsyncSession = Depends(get_db)):
 
 
 @router.get("/target-tracking")
-async def get_target_tracking(db: AsyncSession = Depends(get_db)):
-    """Target tracking: company, team, individual targets vs achievement."""
+async def get_target_tracking(db: AsyncSession = Depends(get_db), current_user: CurrentUser = None):
+    """Target tracking: company, team, individual targets vs achievement (scoped)."""
     from datetime import date, timedelta
 
     # Ambil semua sales reps
@@ -200,6 +243,10 @@ async def get_target_tracking(db: AsyncSession = Depends(get_db)):
         select(User).where(User.role == "sales_rep").order_by(User.name)
     )
     users = users_result.scalars().all()
+    global_view = can_view_all_data(current_user)
+    if not global_view:
+        # Non-manager/superadmin hanya melihat target & achievement dirinya sendiri
+        users = [u for u in users if u.id == current_user.id]
 
     # Ambil semua stages
     stages_result = await db.execute(select(Stage))
@@ -243,27 +290,28 @@ async def get_target_tracking(db: AsyncSession = Depends(get_db)):
     company_achieved = sum(i["achieved"] for i in individuals)
     company_pipeline = sum(i["pipeline"] for i in individuals)
 
-    # Bagi menjadi 2 tim (Team Alpha & Team Beta)
-    mid = len(individuals) // 2 if len(individuals) > 1 else len(individuals)
+    # Bagi menjadi 2 tim (Team Alpha & Team Beta) — hanya untuk global viewer
     teams = []
-    for team_name, team_members in [
-        ("Team Alpha", individuals[:mid]),
-        ("Team Beta", individuals[mid:] if mid < len(individuals) else []),
-    ]:
-        if not team_members:
-            continue
-        team_target = sum(m["target"] for m in team_members)
-        team_achieved = sum(m["achieved"] for m in team_members)
-        team_pipeline = sum(m["pipeline"] for m in team_members)
-        teams.append({
-            "team_name": team_name,
-            "member_count": len(team_members),
-            "target": team_target,
-            "achieved": team_achieved,
-            "pipeline": team_pipeline,
-            "percentage": round(team_achieved / team_target * 100, 1) if team_target > 0 else 0,
-            "members": team_members,
-        })
+    if global_view:
+        mid = len(individuals) // 2 if len(individuals) > 1 else len(individuals)
+        for team_name, team_members in [
+            ("Team Alpha", individuals[:mid]),
+            ("Team Beta", individuals[mid:] if mid < len(individuals) else []),
+        ]:
+            if not team_members:
+                continue
+            team_target = sum(m["target"] for m in team_members)
+            team_achieved = sum(m["achieved"] for m in team_members)
+            team_pipeline = sum(m["pipeline"] for m in team_members)
+            teams.append({
+                "team_name": team_name,
+                "member_count": len(team_members),
+                "target": team_target,
+                "achieved": team_achieved,
+                "pipeline": team_pipeline,
+                "percentage": round(team_achieved / team_target * 100, 1) if team_target > 0 else 0,
+                "members": team_members,
+            })
 
     return {
         "company": {
@@ -279,8 +327,8 @@ async def get_target_tracking(db: AsyncSession = Depends(get_db)):
 
 
 @router.get("/pipeline-insight")
-async def get_pipeline_insight(db: AsyncSession = Depends(get_db)):
-    """High-level pipeline insight: stage breakdown, at-risk deals, metrics."""
+async def get_pipeline_insight(db: AsyncSession = Depends(get_db), current_user: CurrentUser = None):
+    """High-level pipeline insight: stage breakdown, at-risk deals, metrics (scoped)."""
     from datetime import date, timedelta
 
     today = date.today()
@@ -292,8 +340,12 @@ async def get_pipeline_insight(db: AsyncSession = Depends(get_db)):
     stages = stages_result.scalars().all()
     stage_map = {s.id: s for s in stages}
 
-    # Ambil semua opportunities
-    opps_result = await db.execute(select(Opportunity))
+    # Ambil semua opportunities (scoped per owner untuk non-manager)
+    opps_query = select(Opportunity)
+    scope = opportunity_scope(current_user)
+    if scope is not None:
+        opps_query = opps_query.where(scope)
+    opps_result = await db.execute(opps_query)
     all_opps = opps_result.scalars().all()
 
     # Breakdown per stage
@@ -382,23 +434,32 @@ async def get_pipeline_insight(db: AsyncSession = Depends(get_db)):
 
 
 @router.get("/analytics")
-async def get_analytics(db: AsyncSession = Depends(get_db)):
-    """Comprehensive analytics: revenue trend, conversion, velocity, win/loss, leaderboard, etc."""
+async def get_analytics(db: AsyncSession = Depends(get_db), current_user: CurrentUser = None):
+    """Comprehensive analytics: revenue trend, conversion, velocity, win/loss, leaderboard, etc. (scoped)."""
     from datetime import date, timedelta
     from collections import defaultdict
 
     today = date.today()
+    global_view = can_view_all_data(current_user)
 
     # ── Fetch all data ──
     stages_result = await db.execute(select(Stage).order_by(Stage.order))
     stages = stages_result.scalars().all()
     stage_map = {s.id: s for s in stages}
 
-    opps_result = await db.execute(select(Opportunity))
+    # Opportunities scoped per owner untuk non-manager/superadmin
+    opps_query = select(Opportunity)
+    scope = opportunity_scope(current_user)
+    if scope is not None:
+        opps_query = opps_query.where(scope)
+    opps_result = await db.execute(opps_query)
     all_opps = opps_result.scalars().all()
 
     users_result = await db.execute(select(User).where(User.role == "sales_rep").order_by(User.name))
     users = users_result.scalars().all()
+    if not global_view:
+        # Leaderboard hanya berisi diri sendiri untuk non-manager/superadmin
+        users = [u for u in users if u.id == current_user.id]
 
     accounts_result = await db.execute(select(Account))
     accounts = accounts_result.scalars().all()

@@ -1,6 +1,6 @@
 """CRUD API for Accounts, Contacts, and Users."""
 from typing import Annotated
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from app.db.database import get_db
@@ -16,6 +16,7 @@ router = APIRouter(prefix="/accounts", tags=["accounts"])
 @router.get("/users/list", response_model=list[UserResponse])
 async def list_users(
     current_user: Annotated[User, Depends(get_current_active_user)],
+    limit: int = Query(500, ge=1, le=1000),
     db: AsyncSession = Depends(get_db),
 ):
     """List user aktif untuk dropdown/filter pada halaman aplikasi."""
@@ -23,13 +24,14 @@ async def list_users(
         select(User)
         .where(User.is_active.is_(True))
         .order_by(User.name)
+        .limit(limit)
     )
     return result.scalars().all()
 
 
 @router.get("", response_model=list[AccountResponse])
-async def list_accounts(db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(Account).order_by(Account.name))
+async def list_accounts(limit: int = Query(500, ge=1, le=1000), db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(Account).order_by(Account.name).limit(limit))
     return result.scalars().all()
 
 
@@ -43,9 +45,9 @@ async def create_account(data: AccountCreate, db: AsyncSession = Depends(get_db)
 
 
 @router.get("/{account_id}/contacts", response_model=list[ContactResponse])
-async def list_contacts(account_id: str, db: AsyncSession = Depends(get_db)):
+async def list_contacts(account_id: str, limit: int = Query(500, ge=1, le=1000), db: AsyncSession = Depends(get_db)):
     result = await db.execute(
-        select(Contact).where(Contact.account_id == account_id).order_by(Contact.name)
+        select(Contact).where(Contact.account_id == account_id).order_by(Contact.name).limit(limit)
     )
     return result.scalars().all()
 

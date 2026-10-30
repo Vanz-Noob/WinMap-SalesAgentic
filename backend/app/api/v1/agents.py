@@ -1,4 +1,6 @@
 """API endpoints for triggering AI agents."""
+import uuid
+
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.database import get_db
@@ -6,45 +8,55 @@ from app.agents.opportunity_agent import run_opportunity_agent
 from app.agents.pipeline_agent import run_pipeline_agent
 from app.agents.insight_agent import generate_daily_briefing
 from app.agents.export_agent import run_export_agent
-from pydantic import BaseModel
-from typing import Literal
+from app.auth import get_current_active_user
+from app.models import User
+from app.rate_limit import rate_limit_user
+from pydantic import BaseModel, Field
+from typing import Annotated, Literal
 
 router = APIRouter(prefix="/agents", tags=["agents"])
 
 
+CurrentUser = Annotated[User, Depends(get_current_active_user)]
+# Endpoint agents memakai LLM (mahal) — rate limit per-user.
+RateLimited = Annotated[None, Depends(rate_limit_user("agents", limit=20, window=60))]
+
+
 class AgentTrigger(BaseModel):
-    raw_input: str
+    # Batas panjang membatasi biaya LLM & permukaan prompt injection.
+    raw_input: str = Field(min_length=1, max_length=20000)
 
 
 class ExportTrigger(BaseModel):
     data_type: Literal["pipeline", "presales"] = "pipeline"
-    stage_filter: str | None = None
-    owner_id: str | None = None
-    category: str | None = None
-    quarter: str | None = None
-    year: int | None = None
+    stage_filter: str | None = Field(None, max_length=100)
+    owner_id: uuid.UUID | None = None
+    category: str | None = Field(None, max_length=100)
+    quarter: str | None = Field(None, pattern=r"^Q[1-4]$")
+    year: int | None = Field(None, ge=2000, le=2100)
 
 
 @router.post("/opportunity/run")
-async def trigger_opportunity_agent(data: AgentTrigger, db: AsyncSession = Depends(get_db)):
+async def trigger_opportunity_agent(data: AgentTrigger, db: AsyncSession = Depends(get_db), current_user: CurrentUser = None, _rl: RateLimited = None):
     """Trigger Opportunity Agent dengan raw input (email, meeting note, dll)."""
-    return await run_opportunity_agent(data.raw_input, db)
+    return await run_opportunity_agent(data.raw_input, db, current_user)
 
 
 @router.post("/pipeline/scan")
-async def trigger_pipeline_agent(limit: int = 10, db: AsyncSession = Depends(get_db)):
-    """Scan pipeline & generate recommendations (default 10 deals per run)."""
-    return await run_pipeline_agent(db, limit=limit)
+async def trigger_pipeline_agent(limit: int = Query(10, ge=1, le=50), db: AsyncSession = Depends(get_db), current_user: CurrentUser = None, _rl: RateLimited = None):
+    """Scan pipeline & generate recommendations (default 10, maks 50 deals per run —
+    cap mencegah unbounded LLM spend per request)."""
+    return await run_pipeline_agent(db, current_user, limit=limit)
 
 
 @router.get("/insight/briefing")
-async def get_daily_briefing(db: AsyncSession = Depends(get_db)):
+async def get_daily_briefing(db: AsyncSession = Depends(get_db), current_user: CurrentUser = None, _rl: RateLimited = None):
     """Get daily insight briefing."""
-    return await generate_daily_briefing(db)
+    return await generate_daily_briefing(db, current_user)
 
 
 @router.post("/export/run")
-async def trigger_export_agent(data: ExportTrigger, db: AsyncSession = Depends(get_db)):
+async def trigger_export_agent(data: ExportTrigger, db: AsyncSession = Depends(get_db), current_user: CurrentUser = None, _rl: RateLimited = None):
     """
     Trigger Export Agent — export pipeline or presales data to CSV with AI summary.
 
@@ -57,6 +69,7 @@ async def trigger_export_agent(data: ExportTrigger, db: AsyncSession = Depends(g
     """
     return await run_export_agent(
         db,
+        current_user,
         data_type=data.data_type,
         stage_filter=data.stage_filter,
         owner_id=data.owner_id,

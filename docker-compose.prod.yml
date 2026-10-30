@@ -23,7 +23,7 @@ services:
     restart: unless-stopped
 
   redis:
-    image: redis:7-alpine
+    image: redis:8.8-alpine
     container_name: rsa_prod_redis
     # No host port mapping — backend connects via Docker network (redis:6379)
     expose:
@@ -40,8 +40,9 @@ services:
   backend:
     build: ./backend
     container_name: rsa_prod_backend
-    ports:
-      - "8000:8000"
+    # No host port mapping — API only reachable via nginx (backend:8000)
+    expose:
+      - "8000"
     environment:
       - DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER:-rsa_admin}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-rsa_sales}
       - REDIS_URL=redis://redis:6379/0
@@ -51,6 +52,7 @@ services:
       - LLM_MODEL_LITE=deepseek-v4-flash-ga-260731
       - EMBEDDING_MODEL=skylark-embedding-vision-250615
       - JWT_SECRET=${JWT_SECRET:?Set JWT_SECRET in .env.production}
+      - CORS_ORIGINS=${CORS_ORIGINS:-}
       - DEBUG=false
     depends_on:
       postgres:
@@ -100,8 +102,9 @@ services:
       args:
         - BACKEND_URL=http://backend:8000
     container_name: rsa_prod_frontend
-    ports:
-      - "3000:3000"
+    # No host port mapping — frontend only reachable via nginx (frontend:3000)
+    expose:
+      - "3000"
     environment:
       - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-}
       - BACKEND_URL=http://backend:8000
@@ -111,7 +114,7 @@ services:
     restart: unless-stopped
 
   nginx:
-    image: nginx:alpine
+    image: nginx:1.31.2-alpine
     container_name: rsa_prod_nginx
     ports:
       - "8088:80"

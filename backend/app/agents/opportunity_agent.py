@@ -5,7 +5,7 @@ Menggunakan BytePlus ModelArk (Skylark-lite untuk NER, Skylark-pro untuk scoring
 import json
 from app.llm_client import chat_lite
 from app.agents.tools.opportunity_tools import tool_create_opportunity, tool_score_lead_bant
-from app.models import AgentLog
+from app.models import AgentLog, User
 from sqlalchemy.ext.asyncio import AsyncSession
 
 
@@ -39,12 +39,12 @@ async def extract_entities(raw_input: str) -> dict:
         return {"error": "parse_failed", "raw": response.choices[0].message.content}
 
 
-async def run_opportunity_agent(raw_input: str, db: AsyncSession) -> dict:
+async def run_opportunity_agent(raw_input: str, db: AsyncSession, current_user: User) -> dict:
     """
     Main workflow Opportunity Agent:
     1. Extract entities (Skylark-lite)
-    2. Score BANT (Skylark-pro)
-    3. Jika score > threshold -> create opportunity
+    2. BANT scoring (Skylark-pro)
+    3. Jika score > threshold -> create opportunity (owner = requester)
     4. Log action
     """
     # Step 1: Entity extraction
@@ -64,6 +64,7 @@ async def run_opportunity_agent(raw_input: str, db: AsyncSession) -> dict:
             value=estimated_value,
             account_name=entities.get("company_name"),
             source="ai_agent",
+            owner_id=current_user.id,
         )
 
     # Step 4: Log

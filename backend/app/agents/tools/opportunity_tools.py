@@ -7,8 +7,9 @@ from app.llm_client import embed_text
 
 
 async def tool_create_opportunity(db: AsyncSession, name: str, value: float,
-                                   account_name: str = None, source: str = "ai_agent"):
-    """Buat opportunity baru di database."""
+                                   account_name: str = None, source: str = "ai_agent",
+                                   owner_id=None):
+    """Buat opportunity baru di database. owner_id di-bind dari requester (bukan LLM/client)."""
     # Embed opportunity name untuk vector search
     embedding = None
     try:
@@ -67,6 +68,7 @@ async def tool_create_opportunity(db: AsyncSession, name: str, value: float,
         account_id=account_id,
         stage_id=stage.id if stage else None,
         presales_id=presales_id,
+        owner_id=owner_id,
         embedding=embedding,
     )
     db.add(opp)

@@ -5,17 +5,28 @@ from app.config import settings
 
 logger = logging.getLogger(__name__)
 
-# Async client untuk chat completions & tool calling
-llm_client = AsyncOpenAI(
-    base_url=settings.ARK_BASE_URL,
-    api_key=settings.ARK_API_KEY,
+# Lazy client: openai>=3 raise saat api_key kosong — jangan crash saat import;
+# error jelas hanya saat fitur LLM dipakai tanpa ARK_API_KEY.
+llm_client: AsyncOpenAI | None = (
+    AsyncOpenAI(
+        base_url=settings.ARK_BASE_URL,
+        api_key=settings.ARK_API_KEY,
+    )
+    if settings.ARK_API_KEY
+    else None
 )
+
+
+def _client() -> AsyncOpenAI:
+    if llm_client is None:
+        raise RuntimeError("ARK_API_KEY belum diset — fitur LLM tidak tersedia.")
+    return llm_client
 
 
 async def chat_pro(messages: list, tools: list | None = None, temperature: float = 0.7):
     """Skylark-pro untuk reasoning kompleks (stage transition, BANT scoring)."""
     try:
-        return await llm_client.chat.completions.create(
+        return await _client().chat.completions.create(
             model=settings.LLM_MODEL_PRO,
             messages=messages,
             tools=tools,
@@ -29,7 +40,7 @@ async def chat_pro(messages: list, tools: list | None = None, temperature: float
 async def chat_lite(messages: list, temperature: float = 0.3):
     """Skylark-lite untuk tugas sederhana (NER, classification, summary)."""
     try:
-        return await llm_client.chat.completions.create(
+        return await _client().chat.completions.create(
             model=settings.LLM_MODEL_LITE,
             messages=messages,
             temperature=temperature,
@@ -42,7 +53,7 @@ async def chat_lite(messages: list, temperature: float = 0.3):
 async def embed_text(text: str) -> list[float]:
     """Skylark embedding untuk RAG / similarity search."""
     try:
-        response = await llm_client.embeddings.create(
+        response = await _client().embeddings.create(
             model=settings.EMBEDDING_MODEL,
             input=text,
         )

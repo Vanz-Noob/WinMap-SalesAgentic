@@ -1,7 +1,9 @@
 """Pydantic schemas for stages, activities, tasks, accounts, contacts."""
 import uuid
 from datetime import date, datetime
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
+
+MAX_TEXT_LEN = 2000  # Batas deskripsi/teks panjang — membatasi permukaan indirect prompt injection ke agent.
 
 
 # ---- Stage ----
@@ -19,8 +21,8 @@ class StageResponse(BaseModel):
 # ---- Activity ----
 class ActivityCreate(BaseModel):
     opp_id: uuid.UUID
-    type: str
-    description: str | None = None
+    type: str = Field(min_length=1, max_length=50)
+    description: str | None = Field(None, max_length=MAX_TEXT_LEN)
     created_by: uuid.UUID | None = None
 
 class ActivityResponse(BaseModel):
@@ -37,14 +39,14 @@ class ActivityResponse(BaseModel):
 # ---- Task ----
 class TaskCreate(BaseModel):
     opp_id: uuid.UUID
-    title: str
+    title: str = Field(min_length=1, max_length=255)
     due_date: date | None = None
     assigned_to: uuid.UUID | None = None
 
 class TaskUpdate(BaseModel):
-    title: str | None = None
+    title: str | None = Field(None, min_length=1, max_length=255)
     due_date: date | None = None
-    status: str | None = None
+    status: str | None = Field(None, min_length=1, max_length=20)
 
 class TaskResponse(BaseModel):
     id: uuid.UUID
@@ -60,11 +62,11 @@ class TaskResponse(BaseModel):
 
 # ---- Account ----
 class AccountCreate(BaseModel):
-    name: str
-    industry: str | None = None
-    website: str | None = None
-    size: str | None = None
-    region: str | None = None
+    name: str = Field(min_length=1, max_length=255)
+    industry: str | None = Field(None, max_length=100)
+    website: str | None = Field(None, max_length=255)
+    size: str | None = Field(None, max_length=50)
+    region: str | None = Field(None, max_length=100)
 
 class AccountResponse(BaseModel):
     id: uuid.UUID
@@ -81,10 +83,10 @@ class AccountResponse(BaseModel):
 # ---- Contact ----
 class ContactCreate(BaseModel):
     account_id: uuid.UUID | None = None
-    name: str
-    email: str | None = None
-    phone: str | None = None
-    role: str | None = None
+    name: str = Field(min_length=1, max_length=255)
+    email: str | None = Field(None, max_length=255)
+    phone: str | None = Field(None, max_length=50)
+    role: str | None = Field(None, max_length=100)
 
 class ContactResponse(BaseModel):
     id: uuid.UUID

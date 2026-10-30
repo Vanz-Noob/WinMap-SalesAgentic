@@ -16,7 +16,9 @@ from app.auth import (
 )
 from app.config import settings
 from app.db.database import get_db
+from app.logging_config import security_logger
 from app.models import User
+from app.rate_limit import rate_limit_ip
 from app.schemas.auth import UserLogin, UserOut, UserRegister, TokenResponse
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -28,6 +30,10 @@ _COOKIE_KWARGS = dict(
     max_age=settings.JWT_EXPIRE_MINUTES * 60,
     path="/",
 )
+
+# Hash dummy (bcrypt cost 12) — dijalankan saat email tak terdaftar agar
+# waktu respons login sama, mencegah enumerasi email via timing.
+_DUMMY_BCRYPT_HASH = "$2b$12$H9YxBDJF9aZvu.7ebkdzA.1KWhMVS1GNl8WQ3Y4J4WCYbOa8bUOZi"
 
 
 def _is_https(request: Request) -> bool:
@@ -42,6 +48,7 @@ async def register(
     response: Response,
     request: Request,
     db: Annotated[AsyncSession, Depends(get_db)],
+    _rl: Annotated[None, Depends(rate_limit_ip("auth_register", limit=5, window=300))],
 ):
     """Self-registration — only allows non-superadmin roles (sales_rep, presales, sales_manager).
     Superadmin accounts can only be created via the admin API."""
@@ -68,6 +75,14 @@ async def register(
     await db.commit()
     await db.refresh(user)
 
+    security_logger.info(
+        "register_success user_id=%s email=%s role=%s ip=%s",
+        user.id,
+        user.email,
+        user.role,
+        getattr(request.client, "host", None),
+    )
+
     token = create_access_token({"sub": str(user.id), "role": user.role})
     # Set httpOnly cookie so frontend JS cannot read the token (XSS protection)
     # secure=True only when behind HTTPS (CloudFlare tunnel), not bare HTTP
@@ -81,17 +96,42 @@ async def login(
     response: Response,
     request: Request,
     db: Annotated[AsyncSession, Depends(get_db)],
+    _rl: Annotated[None, Depends(rate_limit_ip("auth_login", limit=10, window=60))],
 ):
     result = await db.execute(select(User).where(User.email == data.email))
     user = result.scalars().first()
 
-    if not user or not verify_password(data.password, user.password_hash):
+    if not user:
+        # Anti user-enumeration: burn waktu bcrypt yang sama seperti verifikasi asli.
+        verify_password(data.password, _DUMMY_BCRYPT_HASH)
+        security_logger.warning(
+            "login_failed reason=invalid_credentials ip=%s email=%s",
+            getattr(request.client, "host", None),
+            data.email,
+        )
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Email atau password salah.",
+        )
+
+    if not verify_password(data.password, user.password_hash):
+        security_logger.warning(
+            "login_failed reason=invalid_credentials ip=%s email=%s",
+            getattr(request.client, "host", None),
+            data.email,
+        )
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Email atau password salah.",
         )
 
     if not user.is_active:
+        security_logger.warning(
+            "login_failed reason=inactive_account ip=%s user_id=%s email=%s",
+            getattr(request.client, "host", None),
+            user.id,
+            data.email,
+        )
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Akun Anda dinonaktifkan. Hubungi administrator.",
@@ -101,6 +141,13 @@ async def login(
     # Set httpOnly cookie so frontend JS cannot read the token (XSS protection)
     # secure=True only when behind HTTPS (CloudFlare tunnel), not bare HTTP
     response.set_cookie(secure=_is_https(request), **_COOKIE_KWARGS, value=token)
+    security_logger.info(
+        "login_success user_id=%s email=%s role=%s ip=%s",
+        user.id,
+        user.email,
+        user.role,
+        getattr(request.client, "host", None),
+    )
     return TokenResponse(access_token=token, user=UserOut.model_validate(user))
 
 

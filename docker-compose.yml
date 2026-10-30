@@ -7,7 +7,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
       POSTGRES_DB: ${POSTGRES_DB:-rsa_sales}
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./backend/app/db/init.sql:/docker-entrypoint-initdb.d/init.sql
@@ -18,10 +18,10 @@ services:
       retries: 5
 
   redis:
-    image: redis:7-alpine
+    image: redis:8.8-alpine
     container_name: rsa_redis
     ports:
-      - "6379:6379"
+      - "127.0.0.1:6379:6379"
     volumes:
       - redis_data:/data
     healthcheck:
@@ -34,7 +34,7 @@ services:
     build: ./backend
     container_name: rsa_backend
     ports:
-      - "8000:8000"
+      - "127.0.0.1:8000:8000"
     environment:
       - DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER:-rsa_admin}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-rsa_sales}
       - REDIS_URL=redis://redis:6379/0
@@ -44,7 +44,7 @@ services:
       - LLM_MODEL_LITE=deepseek-v4-flash-ga-260731
       - EMBEDDING_MODEL=skylark-embedding-vision-250615
       - JWT_SECRET=${JWT_SECRET:?Set JWT_SECRET in .env}
-      - DEBUG=${DEBUG:-false}
+      - DEBUG=${DEBUG:-true}
     depends_on:
       postgres:
         condition: service_healthy

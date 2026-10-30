@@ -1,4 +1,6 @@
 """Application configuration via environment variables."""
+import secrets
+
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -23,9 +25,20 @@ class Settings(BaseSettings):
 
     # App
     APP_NAME: str = "WinMap"
-    DEBUG: bool = True
+    DEBUG: bool = False
 
     model_config = SettingsConfigDict(env_file=".env")
+
+    def model_post_init(self, __context) -> None:
+        if not self.JWT_SECRET:
+            if self.DEBUG:
+                # Dev fallback: ephemeral secret (tokens invalid after restart)
+                self.JWT_SECRET = secrets.token_urlsafe(48)
+            else:
+                raise RuntimeError(
+                    "JWT_SECRET wajib diset saat DEBUG=false (production). "
+                    "Generate: python -c \"import secrets; print(secrets.token_urlsafe(48))\""
+                )
 
 
 settings = Settings()

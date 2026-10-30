@@ -386,7 +386,7 @@ export default function DashboardPage() {
                   contentStyle={{ background: "#1e293b", border: "1px solid #334155", borderRadius: "8px" }}
                   labelStyle={{ color: "#f8fafc", fontWeight: 600 }}
                   itemStyle={{ color: "#cbd5e1" }}
-                  formatter={(v: number) => formatCurrency(v)}
+                  formatter={(v) => formatCurrency(Number(v))}
                 />
                 <Legend wrapperStyle={{ fontSize: "11px" }} />
                 <Bar dataKey="Target" fill="#64748b" radius={[0, 2, 2, 0]} />
@@ -419,7 +419,7 @@ export default function DashboardPage() {
                 labelStyle={{ color: "#f8fafc", fontWeight: 600 }}
                 itemStyle={{ color: "#93c5fd" }}
                 cursor={{ fill: "#3b82f620" }}
-                formatter={(value: number) => [`${value} deals`, "Jumlah Deal"]}
+                formatter={(value) => [`${Number(value)} deals`, "Jumlah Deal"]}
               />
               <Bar dataKey="deals" fill="url(#barGradient)" radius={[6, 6, 0, 0]} />
             </BarChart>
@@ -456,7 +456,7 @@ export default function DashboardPage() {
                 contentStyle={{ background: "#1e293b", border: "1px solid #334155", borderRadius: "8px" }}
                 labelStyle={{ color: "#f8fafc", fontWeight: 600 }}
                 itemStyle={{ color: "#cbd5e1" }}
-                formatter={(value: number, name: string) => [`${value} deals`, name as string]}
+                formatter={(value, name) => [`${Number(value)} deals`, name ?? ""]}
               />
               <Legend wrapperStyle={{ fontSize: "12px", color: "#64748b" }} />
             </PieChart>

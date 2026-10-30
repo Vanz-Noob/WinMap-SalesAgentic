@@ -88,7 +88,7 @@ async def run_migrations():
                     print(f"{'='*60}\n")
 
                 hashed = bcrypt.hashpw(
-                    password.encode("utf-8"), bcrypt.gensalt()
+                    password.encode("utf-8")[:72], bcrypt.gensalt()
                 ).decode("utf-8")
 
                 await conn.execute(text("""

@@ -395,7 +395,7 @@ export default function AnalyticsPage() {
               <Tooltip
                 contentStyle={tooltipStyle(ct)}
                 labelStyle={tooltipLabelStyle(ct)}
-                formatter={(value: number) => [formatCurrency(value), "Revenue"]}
+                formatter={(value) => [formatCurrency(Number(value)), "Revenue"]}
               />
               <Area
                 type="monotone"
@@ -422,10 +422,10 @@ export default function AnalyticsPage() {
               <Tooltip
                 contentStyle={tooltipStyle(ct)}
                 labelStyle={tooltipLabelStyle(ct)}
-                formatter={(value: number, _name: string, item: { payload?: { conversion_rate?: number; total_value?: number } }) => {
+                formatter={(value, _name, item) => {
                   const cr = item?.payload?.conversion_rate ?? 0;
                   const tv = item?.payload?.total_value ?? 0;
-                  return [`${value} deals (${cr.toFixed(1)}%) | ${formatCompact(tv)}`, "Stage"];
+                  return [`${Number(value)} deals (${cr.toFixed(1)}%) | ${formatCompact(tv)}`, "Stage"];
                 }}
               />
               <Bar dataKey="deal_count" fill={ct.blue} radius={[0, 4, 4, 0]} />
@@ -464,9 +464,9 @@ export default function AnalyticsPage() {
               <Tooltip
                 contentStyle={tooltipStyle(ct)}
                 labelStyle={tooltipLabelStyle(ct)}
-                formatter={(value: number, _name: string, item: { payload?: { deal_count?: number } }) => {
+                formatter={(value, _name, item) => {
                   const dc = item?.payload?.deal_count ?? 0;
-                  return [`${value} hari (${dc} deals)`, "Avg Days"];
+                  return [`${Number(value)} hari (${dc} deals)`, "Avg Days"];
                 }}
               />
               <Bar dataKey="avg_days" fill={ct.teal} radius={[4, 4, 0, 0]} />
@@ -534,7 +534,7 @@ export default function AnalyticsPage() {
             <Tooltip
               contentStyle={tooltipStyle(ct)}
               labelStyle={tooltipLabelStyle(ct)}
-              formatter={(value: number) => [value.toFixed(1), "Score"]}
+              formatter={(value) => [Number(value).toFixed(1), "Score"]}
             />
             <Bar dataKey="score" radius={[0, 4, 4, 0]}>
               {sortedReps.map((_rep, idx) => (
@@ -622,9 +622,9 @@ export default function AnalyticsPage() {
               <Tooltip
                 contentStyle={tooltipStyle(ct)}
                 labelStyle={tooltipLabelStyle(ct)}
-                formatter={(value: number, _name: string, item: { payload?: { total_value?: number } }) => {
+                formatter={(value, _name, item) => {
                   const tv = item?.payload?.total_value ?? 0;
-                  return [`${value} deals | ${formatCompact(tv)}`, "Range"];
+                  return [`${Number(value)} deals | ${formatCompact(tv)}`, "Range"];
                 }}
               />
               <Bar dataKey="count" fill={ct.blueDeep} radius={[4, 4, 0, 0]} />
@@ -709,7 +709,7 @@ export default function AnalyticsPage() {
               <Tooltip
                 contentStyle={tooltipStyle(ct)}
                 labelStyle={tooltipLabelStyle(ct)}
-                formatter={(value: number) => [`${value.toFixed(1)}%`, "Win Rate"]}
+                formatter={(value) => [`${Number(value).toFixed(1)}%`, "Win Rate"]}
               />
               <Bar dataKey="winRate" radius={[4, 4, 0, 0]}>
                 <Cell fill={ct.blue} />
@@ -746,7 +746,7 @@ export default function AnalyticsPage() {
                   <Tooltip
                     contentStyle={tooltipStyle(ct)}
                     labelStyle={tooltipLabelStyle(ct)}
-                    formatter={(value: number) => [formatCurrency(value), "Total Value"]}
+                    formatter={(value) => [formatCurrency(Number(value)), "Total Value"]}
                   />
                 </PieChart>
               </ResponsiveContainer>
@@ -793,9 +793,9 @@ export default function AnalyticsPage() {
               <Tooltip
                 contentStyle={tooltipStyle(ct)}
                 labelStyle={tooltipLabelStyle(ct)}
-                formatter={(value: number, _name: string, item: { payload?: { total_value?: number } }) => {
+                formatter={(value, _name, item) => {
                   const tv = item?.payload?.total_value ?? 0;
-                  return [`${value} deals | ${formatCompact(tv)}`, "Bucket"];
+                  return [`${Number(value)} deals | ${formatCompact(tv)}`, "Bucket"];
                 }}
               />
               <Bar dataKey="count" radius={[4, 4, 0, 0]}>
@@ -835,7 +835,7 @@ export default function AnalyticsPage() {
             <Tooltip
               contentStyle={tooltipStyle(ct)}
               labelStyle={tooltipLabelStyle(ct)}
-              formatter={(value: number) => formatCurrency(value)}
+              formatter={(value) => formatCurrency(Number(value))}
             />
             <Legend wrapperStyle={{ fontSize: "12px" }} />
             <Line type="monotone" dataKey="weighted" stroke={ct.teal} strokeWidth={2} name="Weighted" dot={{ r: 4 }} />

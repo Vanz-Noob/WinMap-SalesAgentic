@@ -174,6 +174,7 @@ async def list_kpis(
     category: str | None = Query(None),
     quarter: str | None = Query(None),
     year: int | None = Query(None),
+    limit: int = Query(500, ge=1, le=1000),
     db: AsyncSession = Depends(get_db),
 ):
     """List presales KPIs with optional filters.
@@ -199,7 +200,7 @@ async def list_kpis(
     if conditions:
         stmt = stmt.where(and_(*conditions))
 
-    stmt = stmt.order_by(PresalesKpi.category, PresalesKpi.created_at)
+    stmt = stmt.order_by(PresalesKpi.category, PresalesKpi.created_at).limit(limit)
     result = await db.execute(stmt)
     rows = result.all()
 

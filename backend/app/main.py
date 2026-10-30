@@ -1,9 +1,17 @@
 """FastAPI application entry point."""
+import logging
 import os
-from fastapi import Depends, FastAPI
+import time
+
+from fastapi import Depends, FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from app.config import settings
+
 from app.auth import get_current_active_user
+from app.config import settings
+from app.logging_config import setup_logging
+
+setup_logging(level="DEBUG" if settings.DEBUG else "INFO")
+logger = logging.getLogger(__name__)
 
 app = FastAPI(
     title=settings.APP_NAME,
@@ -34,6 +42,32 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.middleware("http")
+async def _log_requests(request: Request, call_next):
+    """Access log + unhandled exception log (OWASP A09). Tidak log headers/cookies."""
+    start = time.perf_counter()
+    try:
+        response = await call_next(request)
+    except Exception:
+        logger.exception(
+            "unhandled_error method=%s path=%s client=%s",
+            request.method,
+            request.url.path,
+            getattr(request.client, "host", None),
+        )
+        raise
+    duration_ms = (time.perf_counter() - start) * 1000
+    logger.info(
+        "http_request method=%s path=%s status=%s duration_ms=%.1f client=%s",
+        request.method,
+        request.url.path,
+        response.status_code,
+        duration_ms,
+        getattr(request.client, "host", None),
+    )
+    return response
 
 
 @app.get("/")
