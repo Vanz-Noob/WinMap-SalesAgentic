@@ -611,7 +611,7 @@ function DeleteConfirmModal({
           </div>
         </div>
         <p className="text-sm text-muted mb-6">
-          User akan dihapus permanen. Semua data terkait user ini juga akan terhapus. Tindakan ini tidak dapat dibatalkan.
+          Apakah kamu yakin untuk menghapus user ini? Akun dan data yang telah dihapus tidak dapat di-recovery.
         </p>
         <div className="flex gap-3">
           <button

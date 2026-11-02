@@ -3,12 +3,13 @@ from typing import Annotated
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import select
+from sqlalchemy import delete, select, update
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth import ALL_ROLES, hash_password, require_superadmin
 from app.db.database import get_db
-from app.models import User
+from app.models import Activity, Opportunity, PresalesKpi, PresalesWork, Task, User
 from app.schemas.auth import AdminCreateUser, AdminUpdateUser, AdminUserOut
 
 router = APIRouter(prefix="/admin", tags=["admin"])
@@ -131,8 +132,35 @@ async def delete_user(
     if not user:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User tidak ditemukan.")
 
-    await db.delete(user)
-    await db.commit()
+    # Hapus data turunan lebih dulu agar FK constraint tidak gagal (error 500).
+    owned_opp_ids = (
+        await db.execute(select(Opportunity.id).where(Opportunity.owner_id == user_id))
+    ).scalars().all()
+
+    if owned_opp_ids:
+        await db.execute(delete(PresalesWork).where(PresalesWork.opportunity_id.in_(owned_opp_ids)))
+        await db.execute(delete(Task).where(Task.opp_id.in_(owned_opp_ids)))
+        await db.execute(delete(Activity).where(Activity.opp_id.in_(owned_opp_ids)))
+
+    await db.execute(delete(PresalesWork).where(PresalesWork.user_id == user_id))
+    await db.execute(delete(PresalesKpi).where(PresalesKpi.user_id == user_id))
+    await db.execute(delete(Task).where(Task.assigned_to == user_id))
+    await db.execute(delete(Activity).where(Activity.created_by == user_id))
+    await db.execute(delete(Opportunity).where(Opportunity.owner_id == user_id))
+    # Opportunity milik user lain: cukup lepas relasi presales-nya
+    await db.execute(
+        update(Opportunity).where(Opportunity.presales_id == user_id).values(presales_id=None)
+    )
+
+    try:
+        await db.delete(user)
+        await db.commit()
+    except IntegrityError as exc:
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="User masih terhubung dengan data lain dan tidak dapat dihapus.",
+        ) from exc
 
 
 @router.get("/roles", response_model=list[str])

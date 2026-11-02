@@ -73,6 +73,7 @@ services:
       - LLM_MODEL_PRO=deepseek-v4-flash-ga-260731
       - LLM_MODEL_LITE=deepseek-v4-flash-ga-260731
       - EMBEDDING_MODEL=skylark-embedding-vision-250615
+      - JWT_SECRET=${JWT_SECRET}
     depends_on:
       redis:
         condition: service_healthy
@@ -89,6 +90,7 @@ services:
       - REDIS_URL=redis://redis:6379/0
       - ARK_API_KEY=${ARK_API_KEY}
       - ARK_BASE_URL=https://ark.ap-southeast.bytepluses.com/api/v3
+      - JWT_SECRET=${JWT_SECRET}
     depends_on:
       redis:
         condition: service_healthy
