@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # ============================================
 # WinMap — Sales Intelligence Platform
-# Stop Script (Ubuntu / Linux compatible)
+# Stop Script
 # ============================================
 # Usage:
 #   ./stop.sh              # Stop production (default)
@@ -9,10 +9,11 @@
 #   ./stop.sh --prod       # Stop production
 #   ./stop.sh --clean      # Stop + hapus volumes (DANGER!)
 #   ./stop.sh --all        # Stop dev + prod sekaligus
+#   ./stop.sh --env FILE   # Pakai file env tertentu
 #   ./stop.sh --help       # Show help
 # ============================================
 
-set -euo pipefail
+set -uo pipefail
 
 # ── Colors ──────────────────────────────────
 RED='\033[0;31m'
@@ -21,323 +22,266 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 CYAN='\033[0;36m'
 BOLD='\033[1m'
-NC='\033[0m' # No Color
+NC='\033[0m'
 
 # ── Config ──────────────────────────────────
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 DEV_COMPOSE="docker-compose.yml"
 PROD_COMPOSE="docker-compose.prod.yml"
 
-# ── Defaults ────────────────────────────────
 MODE="prod"
 DO_CLEAN=false
 STOP_ALL=false
-COMPOSE_CMD=()
-DOCKER_PREFIX=()
+ENV_OVERRIDE="${WM_ENV_FILE:-}"
+USE_SUDO=""
+COMPOSE_BIN="docker compose"
 
-# ── Detect Docker Compose (V2 plugin or V1 standalone) ──
-detect_compose() {
-    if docker compose version &>/dev/null; then
-        COMPOSE_CMD=(docker compose)
-    elif command -v docker-compose &>/dev/null; then
-        COMPOSE_CMD=(docker-compose)
+die() { echo -e "${RED}Error: $*${NC}" >&2; exit 1; }
+
+# Kill proses milik root. Non-interaktif: set WM_SUDO_PASS.
+sudo_kill() {
+    local pid="$1"
+    if [[ -n "${WM_SUDO_PASS:-}" ]]; then
+        printf '%s\n' "$WM_SUDO_PASS" | sudo -S kill -9 "$pid" 2>/dev/null
     else
-        echo -e "${RED}Error: Docker Compose tidak ditemukan.${NC}"
-        echo -e "Install dengan: ${CYAN}sudo apt install docker-compose-plugin${NC} (V2)"
-        echo -e "Atau:           ${CYAN}sudo apt install docker-compose${NC} (V1)"
-        exit 1
+        sudo kill -9 "$pid" 2>/dev/null
     fi
 }
 
-# ── Detect if Docker needs sudo ──
-detect_docker_sudo() {
+docker_run() {
+    if [[ -n "$USE_SUDO" ]]; then sudo docker "$@"; else docker "$@"; fi
+}
+
+compose_run() {
+    if [[ -n "$USE_SUDO" ]]; then sudo $COMPOSE_BIN "$@"; else $COMPOSE_BIN "$@"; fi
+}
+
+# ── Detect Docker + Compose ─────────────────
+detect_docker() {
+    command -v docker &>/dev/null || die "Docker tidak ditemukan."
+
     if docker info &>/dev/null 2>&1; then
-        DOCKER_PREFIX=()
+        USE_SUDO=""
     elif sudo docker info &>/dev/null 2>&1; then
-        DOCKER_PREFIX=(sudo)
+        USE_SUDO="sudo"
     else
-        echo -e "${RED}Error: Tidak bisa akses Docker daemon.${NC}"
-        echo -e "Start Docker: ${CYAN}sudo systemctl start docker${NC}"
-        exit 1
+        echo -e "${YELLOW}Warning: Docker daemon tidak berjalan — services sudah berhenti.${NC}"
+        return 1
     fi
+
+    if docker_run compose version &>/dev/null 2>&1; then
+        COMPOSE_BIN="docker compose"
+    elif command -v docker-compose &>/dev/null; then
+        COMPOSE_BIN="docker-compose"
+    else
+        die "Docker Compose tidak ditemukan."
+    fi
+    return 0
 }
 
-# ── Build full compose command with sudo prefix ──
-get_compose_base() {
-    if [[ ${#DOCKER_PREFIX[@]} -gt 0 ]]; then
-        echo "${DOCKER_PREFIX[@]}" "${COMPOSE_CMD[@]}"
-    else
-        echo "${COMPOSE_CMD[@]}"
-    fi
+# ── Container milik stack ini saja ──────────
+stack_containers() {
+    local mode="$1" cid name
+    docker_run ps -aq --filter "name=rsa" 2>/dev/null | while IFS= read -r cid; do
+        [[ -z "$cid" ]] && continue
+        name=$(docker_run inspect -f '{{.Name}}' "$cid" 2>/dev/null | sed 's#^/##')
+        [[ -z "$name" ]] && continue
+        if [[ "$mode" == "prod" ]]; then
+            [[ "$name" == rsa_prod_* ]] && echo "$cid"
+        else
+            [[ "$name" != rsa_prod_* ]] && echo "$cid"
+        fi
+    done
 }
 
-# ── Force-kill & remove containers (apparmor workaround) ──
-# Saat docker stop gagal karena apparmor (permission denied):
-# 1. Set restart policy ke "no" (cegah Docker auto-restart)
-# 2. Kill PID container langsung via kill -9
-# 3. Remove container (docker rm -f) agar compose bisa recreate
-force_kill_containers() {
-    local filter="${1:-name=rsa}"
-    local docker_cmd
-    if [[ ${#DOCKER_PREFIX[@]} -gt 0 ]]; then
-        docker_cmd=(sudo docker)
-    else
-        docker_cmd=(docker)
-    fi
+stack_running_names() {
+    local mode="$1" cid
+    for cid in $(stack_containers "$mode"); do
+        docker_run inspect -f '{{.Name}} => {{.State.Status}}' "$cid" 2>/dev/null | sed 's#^/##'
+    done
+}
 
-    local cids
-    cids=$("${docker_cmd[@]}" ps -aq --filter "$filter" 2>/dev/null || true)
+# ── Force-kill stack (workaround AppArmor) ──
+force_kill_stack() {
+    local mode="$1" cids cid pid
+    cids=$(stack_containers "$mode")
     if [[ -z "$cids" ]]; then
         return 0
     fi
 
-    # Step 1: Disable restart policy (cegah auto-restart setelah kill)
     for cid in $cids; do
-        "${docker_cmd[@]}" update --restart=no "$cid" &>/dev/null || true
+        docker_run update --restart=no "$cid" &>/dev/null || true
     done
 
-    # Step 2: Kill PID langsung
     for cid in $cids; do
-        local pid
-        pid=$("${docker_cmd[@]}" inspect -f '{{.State.Pid}}' "$cid" 2>/dev/null || echo "0")
-        if [[ -n "$pid" ]] && [[ "$pid" != "0" ]]; then
-            echo -e "   ${YELLOW}Force-killing container ${cid:0:12} (PID=$pid)...${NC}"
-            kill -9 "$pid" 2>/dev/null || true
+        pid=$(docker_run inspect -f '{{.State.Pid}}' "$cid" 2>/dev/null || true)
+        pid="${pid:-0}"
+        [[ "$pid" == "0" ]] && continue
+        echo -e "   ${YELLOW}Force-kill ${cid:0:12} (PID=$pid)...${NC}"
+        if kill -9 "$pid" 2>/dev/null; then
+            continue
         fi
+        sudo_kill "$pid" \
+            || echo -e "   ${RED}Tidak bisa kill PID $pid (butuh sudo).${NC}"
     done
 
-    # Step 3: Wait + remove containers
     sleep 2
     for cid in $cids; do
-        "${docker_cmd[@]}" rm -f "$cid" &>/dev/null || true
+        docker_run rm -f "$cid" &>/dev/null || true
     done
+}
 
-    # Final cleanup: prune any remaining stopped containers
-    "${docker_cmd[@]}" container prune -f &>/dev/null || true
+# ── Resolve file env ─────────────────────────
+resolve_env_file() {
+    local mode="$1"
+    if [[ -n "$ENV_OVERRIDE" ]]; then
+        ENV_FILE="$ENV_OVERRIDE"
+        if [[ "$ENV_FILE" == /* ]]; then
+            ENV_PATH="$ENV_FILE"
+            return 0
+        fi
+    elif [[ "$mode" == "prod" ]]; then
+        if [[ -f "$SCRIPT_DIR/.env.production" ]]; then
+            ENV_FILE=".env.production"
+        else
+            ENV_FILE=".env"
+        fi
+    else
+        ENV_FILE=".env"
+    fi
+    ENV_PATH="$SCRIPT_DIR/$ENV_FILE"
 }
 
 # ── Parse Arguments ─────────────────────────
 while [[ $# -gt 0 ]]; do
     case "$1" in
-        --dev)
-            MODE="dev"
-            shift
-            ;;
-        --prod)
-            MODE="prod"
-            shift
-            ;;
-        --clean)
-            DO_CLEAN=true
-            shift
-            ;;
-        --all)
-            STOP_ALL=true
-            shift
-            ;;
+        --dev) MODE="dev"; shift ;;
+        --prod) MODE="prod"; shift ;;
+        --clean) DO_CLEAN=true; shift ;;
+        --all) STOP_ALL=true; shift ;;
+        --env)
+            [[ $# -gt 1 ]] || die "Opsi --env butuh nama file, contoh: --env .env.production"
+            ENV_OVERRIDE="$2"; shift 2 ;;
         --help|-h)
             echo ""
             echo -e "${BOLD}WinMap — Sales Intelligence Platform${NC}"
             echo ""
-            echo -e "${BOLD}Usage:${NC}"
-            echo -e "  ./stop.sh [OPTIONS]"
+            echo -e "${BOLD}Usage:${NC}  ./stop.sh [OPTIONS]"
             echo ""
             echo -e "${BOLD}Options:${NC}"
-            echo -e "  ${CYAN}--dev${NC}       Stop mode development"
-            echo -e "  ${CYAN}--prod${NC}      Stop mode production (default)"
-            echo -e "  ${CYAN}--clean${NC}     Stop + hapus semua volumes & data ${RED}(DANGER!)${NC}"
-            echo -e "  ${CYAN}--all${NC}       Stop dev + prod sekaligus"
-            echo -e "  ${CYAN}--help${NC}      Show help ini"
+            echo -e "  ${CYAN}--dev${NC}         Stop development"
+            echo -e "  ${CYAN}--prod${NC}        Stop production (default)"
+            echo -e "  ${CYAN}--clean${NC}       Stop + hapus volumes & data ${RED}(DANGER!)${NC}"
+            echo -e "  ${CYAN}--all${NC}         Stop dev + prod sekaligus"
+            echo -e "  ${CYAN}--env FILE${NC}    Pakai file env tertentu"
+            echo -e "  ${CYAN}--help${NC}        Show help ini"
             echo ""
             echo -e "${BOLD}Examples:${NC}"
-            echo -e "  ${GREEN}./stop.sh${NC}                  # Stop production"
-            echo -e "  ${GREEN}./stop.sh --dev${NC}            # Stop development"
-            echo -e "  ${GREEN}./stop.sh --all${NC}            # Stop semua"
+            echo -e "  ${GREEN}./stop.sh${NC}             # Stop production"
+            echo -e "  ${GREEN}./stop.sh --dev${NC}       # Stop development"
+            echo -e "  ${GREEN}./stop.sh --all${NC}       # Stop semua"
             echo -e "  ${RED}./stop.sh --clean${NC}     # Stop + HAPUS SEMUA DATA!"
             echo ""
             exit 0
             ;;
-        *)
-            echo -e "${RED}Error: Unknown option: $1${NC}"
-            echo -e "Run ${CYAN}./stop.sh --help${NC} untuk melihat opsi yang tersedia."
-            exit 1
-            ;;
+        *) die "Unknown option: $1 (lihat ./stop.sh --help)" ;;
     esac
 done
 
-# ── Define stop function ────────────────────
+# ── Stop satu stack ─────────────────────────
 stop_stack() {
-    local compose_file="$1"
-    local mode_label="$2"
-    local do_clean="$3"
-    local env_file="$4"
+    local mode="$1" compose_file="$2" mode_label="$3" do_clean="$4"
 
+    resolve_env_file "$mode"
     local file_path="$SCRIPT_DIR/$compose_file"
-    local env_path="$SCRIPT_DIR/$env_file"
 
     echo -e "${BLUE}Stopping WinMap — ${mode_label}${NC}"
     echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     echo ""
 
-    # ── Check Docker ───────────────────────────
-    echo -e "${CYAN}[1/4]${NC} Checking Docker..."
-    if ! command -v docker &>/dev/null; then
-        echo -e "${RED}Error: Docker tidak ditemukan.${NC}"
-        return 1
-    fi
-
-    detect_compose
-    detect_docker_sudo
-
-    # Check if Docker daemon is running
-    local docker_ok=false
-    if [[ ${#DOCKER_PREFIX[@]} -gt 0 ]]; then
-        if sudo docker info &>/dev/null 2>&1; then
-            docker_ok=true
-        fi
-    else
-        if docker info &>/dev/null 2>&1; then
-            docker_ok=true
-        fi
-    fi
-
-    if [[ "$docker_ok" != true ]]; then
-        echo -e "${YELLOW}Warning: Docker daemon tidak berjalan. Services mungkin sudah berhenti.${NC}"
+    echo -e "${CYAN}[1/3]${NC} Checking Docker..."
+    if ! detect_docker; then
         echo -e "${GREEN}OK Nothing to stop${NC}"
         echo ""
         return 0
     fi
     echo -e "${GREEN}OK Docker is running${NC}"
 
-    # Build compose base command
-    local compose_base
-    if [[ ${#DOCKER_PREFIX[@]} -gt 0 ]]; then
-        compose_base=("${DOCKER_PREFIX[@]}" "${COMPOSE_CMD[@]}")
-    else
-        compose_base=("${COMPOSE_CMD[@]}")
+    # ── Cek service yang jalan ────────────────
+    echo -e "${CYAN}[2/3]${NC} Checking running services..."
+    local names
+    names=$(stack_running_names "$mode")
+
+    if [[ -z "$names" ]]; then
+        echo -e "${YELLOW}Warning: Tidak ada container WinMap (${mode_label}) yang ada.${NC}"
+        echo -e "${GREEN}OK Already stopped${NC}"
+        echo ""
+        return 0
     fi
-
-    # ── Check if services are running ─────────
-    echo -e "${CYAN}[2/4]${NC} Checking running services..."
-
-    # Try with --env-file first (for variable interpolation)
-    local running_containers=""
-    if [[ -f "$env_path" ]]; then
-        running_containers=$("${compose_base[@]}" --env-file "$env_path" -f "$file_path" ps --format json 2>/dev/null | grep '"State":"running"' || true)
-    else
-        # No env file — try without it (some compose files don't need it)
-        running_containers=$("${compose_base[@]}" -f "$file_path" ps --format json 2>/dev/null | grep '"State":"running"' || true)
-    fi
-
-    # Fallback: check via docker ps directly
-    if [[ -z "$running_containers" ]]; then
-        local direct_running
-        if [[ ${#DOCKER_PREFIX[@]} -gt 0 ]]; then
-            direct_running=$(sudo docker ps --filter "name=rsa" --format '{{.Names}}' 2>/dev/null || true)
-        else
-            direct_running=$(docker ps --filter "name=rsa" --format '{{.Names}}' 2>/dev/null || true)
-        fi
-
-        if [[ -z "$direct_running" ]]; then
-            echo -e "${YELLOW}Warning: Tidak ada services WinMap yang running.${NC}"
-            echo -e "${GREEN}OK Already stopped${NC}"
-            echo ""
-            return 0
-        fi
-    fi
-
-    echo -e "   Found running services:"
-    if [[ -f "$env_path" ]]; then
-        "${compose_base[@]}" --env-file "$env_path" -f "$file_path" ps --format "table {{.Service}}\t{{.Status}}" 2>/dev/null | sed 's/^/   /' || \
-            { [[ ${#DOCKER_PREFIX[@]} -gt 0 ]] && sudo docker ps --filter "name=rsa" --format "table {{.Names}}\t{{.Status}}" 2>/dev/null | sed 's/^/   /'; } || \
-            docker ps --filter "name=rsa" --format "table {{.Names}}\t{{.Status}}" 2>/dev/null | sed 's/^/   /'
-    else
-        "${compose_base[@]}" -f "$file_path" ps --format "table {{.Service}}\t{{.Status}}" 2>/dev/null | sed 's/^/   /' || \
-            { [[ ${#DOCKER_PREFIX[@]} -gt 0 ]] && sudo docker ps --filter "name=rsa" --format "table {{.Names}}\t{{.Status}}" 2>/dev/null | sed 's/^/   /'; } || \
-            docker ps --filter "name=rsa" --format "table {{.Names}}\t{{.Status}}" 2>/dev/null | sed 's/^/   /'
-    fi
+    echo -e "   Found:"
+    echo "$names" | sed 's/^/     - /'
     echo ""
     echo -e "${GREEN}OK Services found${NC}"
 
-    # ── Confirm clean ──────────────────────────
+    # ── Konfirmasi --clean ────────────────────
     if [[ "$do_clean" == true ]]; then
         echo ""
         echo -e "${RED}${BOLD}WARNING: --clean akan MENGHAPUS SEMUA DATA!${NC}"
-        echo -e "${RED}   - Database (postgres volume)${NC}"
+        echo -e "${RED}   - Database (volume postgres)${NC}"
         echo -e "${RED}   - Redis cache${NC}"
         echo -e "${RED}   - Data tidak bisa dikembalikan!${NC}"
         echo ""
-        read -p "   Ketik 'DELETE' untuk konfirmasi: " confirm
-        echo ""
-
-        if [[ "$confirm" != "DELETE" ]]; then
-            echo -e "${YELLOW}Warning: Dibatalkan. Data aman.${NC}"
-            echo -e "${GREEN}OK Stop tanpa clean${NC}"
-            do_clean=false
+        if [[ -t 0 ]]; then
+            read -p "   Ketik 'DELETE' untuk konfirmasi: " confirm || confirm=""
+            echo ""
+            if [[ "$confirm" != "DELETE" ]]; then
+                echo -e "${YELLOW}Warning: Dibatalkan. Data aman.${NC}"
+                do_clean=false
+            fi
         else
-            echo -e "${RED}Proceeding with clean...${NC}"
+            echo -e "${YELLOW}Non-interaktif: --clean diabaikan demi keamanan data.${NC}"
+            do_clean=false
         fi
     fi
 
     # ── Stop services ─────────────────────────
-    echo -e "${CYAN}[3/4]${NC} Stopping services..."
+    echo -e "${CYAN}[3/3]${NC} Stopping services..."
 
-    # Step 3a: Force-kill container PIDs (apparmor workaround)
-    echo -e "   ${YELLOW}Pre-step: force-killing running containers...${NC}"
-    force_kill_containers "name=rsa"
+    local down_args=(--remove-orphans)
+    [[ "$do_clean" == true ]] && down_args=(--remove-orphans -v)
 
-    # Step 3b: docker compose down (cleanup stopped containers + networks)
-    if [[ "$do_clean" == true ]]; then
-        if [[ -f "$env_path" ]]; then
-            "${compose_base[@]}" --env-file "$env_path" -f "$file_path" down -v --remove-orphans 2>&1 | while read -r line; do
-                echo "   $line"
-            done
-        else
-            "${compose_base[@]}" -f "$file_path" down -v --remove-orphans 2>&1 | while read -r line; do
-                echo "   $line"
-            done
-        fi
-        echo -e "${GREEN}OK Services stopped + volumes removed${NC}"
-    else
-        if [[ -f "$env_path" ]]; then
-            "${compose_base[@]}" --env-file "$env_path" -f "$file_path" down --remove-orphans 2>&1 | while read -r line; do
-                echo "   $line"
-            done
-        else
-            "${compose_base[@]}" -f "$file_path" down --remove-orphans 2>&1 | while read -r line; do
-                echo "   $line"
-            done
-        fi
+    local env_args=()
+    [[ -f "$ENV_PATH" ]] && env_args=(--env-file "$ENV_PATH")
+
+    # Coba cara normal dulu
+    if compose_run "${env_args[@]}" -f "$file_path" down "${down_args[@]}" &>/dev/null; then
         echo -e "${GREEN}OK Services stopped${NC}"
+    else
+        echo -e "${YELLOW}docker compose down gagal (kemungkinan AppArmor) — force-kill...${NC}"
+        force_kill_stack "$mode"
+        compose_run "${env_args[@]}" -f "$file_path" down "${down_args[@]}" &>/dev/null || true
     fi
 
-    # ── Verify ─────────────────────────────────
-    echo -e "${CYAN}[4/4]${NC} Verifying..."
-
-    local remaining=""
-    if [[ -f "$env_path" ]]; then
-        remaining=$("${compose_base[@]}" --env-file "$env_path" -f "$file_path" ps --format json 2>/dev/null | grep '"State":"running"' || true)
-    else
-        remaining=$("${compose_base[@]}" -f "$file_path" ps --format json 2>/dev/null | grep '"State":"running"' || true)
+    # ── Verifikasi ────────────────────────────
+    local remaining
+    remaining=$(stack_containers "$mode")
+    if [[ -n "$remaining" ]]; then
+        echo -e "${YELLOW}Masih ada container — retry force-kill...${NC}"
+        force_kill_stack "$mode"
+        remaining=$(stack_containers "$mode")
     fi
 
     if [[ -z "$remaining" ]]; then
-        echo -e "${GREEN}OK All services stopped${NC}"
+        if [[ "$do_clean" == true ]]; then
+            echo -e "${GREEN}OK Services stopped + volumes removed${NC}"
+        else
+            echo -e "${GREEN}OK All services stopped${NC}"
+        fi
     else
-        echo -e "${YELLOW}Warning: beberapa service masih running. Force-killing...${NC}"
-        force_kill_containers "name=rsa"
-        # Re-check
-        remaining=""
-        if [[ -f "$env_path" ]]; then
-            remaining=$("${compose_base[@]}" --env-file "$env_path" -f "$file_path" ps --format json 2>/dev/null | grep '"State":"running"' || true)
-        else
-            remaining=$("${compose_base[@]}" -f "$file_path" ps --format json 2>/dev/null | grep '"State":"running"' || true)
-        fi
-        if [[ -z "$remaining" ]]; then
-            echo -e "${GREEN}OK All services stopped (via force-kill)${NC}"
-        else
-            echo -e "${RED}Error: Masih ada service running. Coba: ${CYAN}sudo kill -9 \$(sudo docker ps -q --filter name=rsa)${NC}"
-        fi
+        echo -e "${RED}Error: masih ada container tersisa:${NC}"
+        echo "$remaining" | sed 's/^/   /'
+        echo -e "   Manual: ${CYAN}sudo kill -9 \$(sudo docker inspect -f '{{.State.Pid}}' <container>)${NC}"
+        return 1
     fi
 
     echo ""
@@ -345,27 +289,26 @@ stop_stack() {
     echo -e "${GREEN}${BOLD}OK ${mode_label} stopped successfully${NC}"
     echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     echo ""
-
     if [[ "$do_clean" == true ]]; then
-        echo -e "${YELLOW}Tip: Untuk restart: ${CYAN}./start.sh${NC}"
-        echo -e "${YELLOW}Tip: Jangan lupa seed ulang: ${CYAN}./start.sh --seed${NC}"
-        echo ""
+        echo -e "${YELLOW}Tip: Start ulang + seed: ${CYAN}./start.sh --seed${NC}"
     else
-        echo -e "${YELLOW}Tip: Untuk restart: ${CYAN}./start.sh${NC}"
-        echo ""
+        echo -e "${YELLOW}Tip: Untuk start lagi: ${CYAN}./start.sh${NC}"
     fi
+    echo ""
 }
 
 # ── Execute ─────────────────────────────────
+RC=0
 if [[ "$STOP_ALL" == true ]]; then
-    # Stop both dev and prod
-    stop_stack "$PROD_COMPOSE" "PRODUCTION" "$DO_CLEAN" ".env.production"
+    stop_stack "prod" "$PROD_COMPOSE" "PRODUCTION" "$DO_CLEAN" || RC=1
     echo ""
-    stop_stack "$DEV_COMPOSE" "DEVELOPMENT" "$DO_CLEAN" ".env"
+    stop_stack "dev" "$DEV_COMPOSE" "DEVELOPMENT" "$DO_CLEAN" || RC=1
 else
     if [[ "$MODE" == "dev" ]]; then
-        stop_stack "$DEV_COMPOSE" "DEVELOPMENT" "$DO_CLEAN" ".env"
+        stop_stack "dev" "$DEV_COMPOSE" "DEVELOPMENT" "$DO_CLEAN" || RC=1
     else
-        stop_stack "$PROD_COMPOSE" "PRODUCTION" "$DO_CLEAN" ".env.production"
+        stop_stack "prod" "$PROD_COMPOSE" "PRODUCTION" "$DO_CLEAN" || RC=1
     fi
 fi
+
+exit "$RC"
