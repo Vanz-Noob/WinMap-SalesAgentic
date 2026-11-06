@@ -19,18 +19,22 @@ export default function AgentsPage() {
   const [exportCategory, setExportCategory] = useState("all");
   const [exportQuarter, setExportQuarter] = useState("Q3");
   const [exportYear, setExportYear] = useState(2026);
+  const [exportPresalesUser, setExportPresalesUser] = useState("all");
+  const [exportFormat, setExportFormat] = useState<"csv" | "excel" | "pdf">("csv");
   const [exportResult, setExportResult] = useState<Record<string, unknown> | null>(null);
   const [salesReps, setSalesReps] = useState<User[]>([]);
+  const [presalesUsers, setPresalesUsers] = useState<User[]>([]);
 
   // Onboarding toggle
   const [showGuide, setShowGuide] = useState(true);
 
-  // Fetch sales reps for export filter dropdown
+  // Fetch users for export filter dropdowns
   useEffect(() => {
     (async () => {
       try {
         const users = await apiFetch<User[]>("/accounts/users/list");
         setSalesReps(users.filter((u) => u.role === "sales_rep" || u.role === "sales_manager"));
+        setPresalesUsers(users.filter((u) => u.role === "presales"));
       } catch {
         // silently ignore — dropdown just won't have options
       }
@@ -81,16 +85,16 @@ export default function AgentsPage() {
     setLoading("export");
     setExportResult(null);
     try {
-      const body: Record<string, unknown> = {
-        data_type: exportDataType,
-        quarter: exportDataType === "presales" ? exportQuarter : undefined,
-        year: exportDataType === "presales" ? exportYear : undefined,
-      };
+      const body: Record<string, unknown> = { data_type: exportDataType };
       if (exportDataType === "pipeline") {
         body.stage_filter = exportStageFilter;
         body.owner_id = exportOwner !== "all" ? exportOwner : undefined;
       } else {
         body.category = exportCategory;
+        body.quarter = exportQuarter;
+        body.year = exportYear;
+        body.presales_user_id = exportPresalesUser !== "all" ? exportPresalesUser : undefined;
+        body.file_format = exportFormat;
       }
       const result = await apiPost<Record<string, unknown>>("/agents/export/run", body);
       setExportResult(result);
@@ -101,16 +105,18 @@ export default function AgentsPage() {
     }
   };
 
-  const downloadCsv = () => {
-    if (!exportResult?.csv_content) return;
-    const csv = exportResult.csv_content as string;
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  const downloadFile = () => {
+    if (!exportResult?.file_bytes_base64) return;
+    const raw = atob(exportResult.file_bytes_base64 as string);
+    const bytes = new Uint8Array(raw.length);
+    for (let i = 0; i < raw.length; i++) bytes[i] = raw.charCodeAt(i);
+    const blob = new Blob([bytes.buffer as ArrayBuffer], {
+      type: (exportResult.mime_type as string) || "application/octet-stream",
+    });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
-    const dataType = exportResult.data_type as string;
-    const ts = new Date().toISOString().split("T")[0];
     link.href = url;
-    link.download = `export_${dataType}_${ts}.csv`;
+    link.download = (exportResult.file_name as string) || `export_${exportResult.data_type as string}.csv`;
     link.click();
     URL.revokeObjectURL(url);
   };
@@ -302,7 +308,7 @@ export default function AgentsPage() {
       <Card>
         <CardHeader
           title="Export Agent"
-          subtitle="Export pipeline/presales data ke CSV + AI summary & rekomendasi"
+          subtitle="Export pipeline/presales data ke CSV, Excel & PDF (dengan chart) + AI summary & rekomendasi"
         />
 
         {/* Data Type Toggle */}
@@ -332,7 +338,7 @@ export default function AgentsPage() {
         </div>
 
         {/* Filters */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
           {exportDataType === "pipeline" ? (
             <>
               <div>
@@ -370,6 +376,21 @@ export default function AgentsPage() {
             </>
           ) : (
             <>
+              <div>
+                <label className="text-xs text-muted mb-1 block">Presales Name</label>
+                <select
+                  value={exportPresalesUser}
+                  onChange={(e) => setExportPresalesUser(e.target.value)}
+                  className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary"
+                >
+                  <option value="all">All Presales</option>
+                  {presalesUsers.map((u) => (
+                    <option key={u.id} value={u.id}>
+                      {u.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
               <div>
                 <label className="text-xs text-muted mb-1 block">Category</label>
                 <select
@@ -415,7 +436,28 @@ export default function AgentsPage() {
         </div>
 
         {/* Action Buttons */}
-        <div className="flex gap-2 flex-wrap">
+        <div className="flex gap-2 flex-wrap items-center">
+          {exportDataType === "presales" && (
+            <div className="flex rounded-lg overflow-hidden border border-border">
+              {([
+                { key: "csv", label: "CSV" },
+                { key: "excel", label: "Excel + Chart" },
+                { key: "pdf", label: "PDF + Chart" },
+              ] as const).map((f) => (
+                <button
+                  key={f.key}
+                  onClick={() => setExportFormat(f.key)}
+                  className={`px-3 py-2 text-sm font-medium transition-colors ${
+                    exportFormat === f.key
+                      ? "bg-primary text-white"
+                      : "bg-background text-muted hover:text-foreground"
+                  }`}
+                >
+                  {f.label}
+                </button>
+              ))}
+            </div>
+          )}
           <button
             onClick={runExportAgent}
             disabled={loading === "export"}
@@ -424,13 +466,13 @@ export default function AgentsPage() {
             {loading === "export" ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />}
             {loading === "export" ? "Exporting..." : "Export Data"}
           </button>
-          {!!exportResult?.csv_content && (
+          {!!exportResult?.file_bytes_base64 && (
             <button
-              onClick={downloadCsv}
+              onClick={downloadFile}
               className="flex items-center gap-2 bg-primary hover:bg-secondary text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
             >
               <FileSpreadsheet size={16} />
-              Download CSV
+              Download {(exportResult.file_format as string)?.toUpperCase() || "CSV"}
             </button>
           )}
         </div>
@@ -515,7 +557,7 @@ export default function AgentsPage() {
                   </div>
                   <pre className="text-xs text-foreground overflow-x-auto whitespace-pre-wrap">
                     {JSON.stringify(exportResult.data, null, 2).slice(0, 3000)}
-                    {JSON.stringify(exportResult.data).length > 3000 && "\n\n... (truncated, download CSV for full data)"}
+                    {JSON.stringify(exportResult.data).length > 3000 && "\n\n... (truncated, download file for full data)"}
                   </pre>
                 </div>
               </>

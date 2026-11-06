@@ -34,6 +34,8 @@ class ExportTrigger(BaseModel):
     category: str | None = Field(None, max_length=100)
     quarter: str | None = Field(None, pattern=r"^Q[1-4]$")
     year: int | None = Field(None, ge=2000, le=2100)
+    presales_user_id: uuid.UUID | None = None
+    file_format: Literal["csv", "excel", "pdf"] = "csv"
 
 
 @router.post("/opportunity/run")
@@ -58,14 +60,15 @@ async def get_daily_briefing(db: AsyncSession = Depends(get_db), current_user: C
 @router.post("/export/run")
 async def trigger_export_agent(data: ExportTrigger, db: AsyncSession = Depends(get_db), current_user: CurrentUser = None, _rl: RateLimited = None):
     """
-    Trigger Export Agent — export pipeline or presales data to CSV with AI summary.
+    Trigger Export Agent — export pipeline or presales data to CSV/Excel/PDF with AI summary.
 
     data_type:
-      - "pipeline": Export opportunities (sales pipeline)
-      - "presales": Export presales KPI tracking data
+      - "pipeline": Export opportunities (sales pipeline) — CSV only
+      - "presales": Export presales KPI tracking data — CSV / Excel (chart) / PDF (chart)
 
     Pipeline filters: stage_filter ("all", "open", "closed_won", "closed_lost", or stage name), owner_id
-    Presales filters: category ("all" or specific), quarter ("Q3"), year (2026)
+    Presales filters: category ("all" or specific), quarter ("Q3"), year (2026),
+      presales_user_id (filter nama presales), file_format ("csv" | "excel" | "pdf")
     """
     return await run_export_agent(
         db,
@@ -76,4 +79,6 @@ async def trigger_export_agent(data: ExportTrigger, db: AsyncSession = Depends(g
         category=data.category,
         quarter=data.quarter,
         year=data.year,
+        presales_user_id=data.presales_user_id,
+        file_format=data.file_format,
     )
